@@ -86,7 +86,7 @@ mcp-chatbot/
 - Express.js + TypeScript
 - OpenAI SDK (for any OpenAI-compatible endpoint)
 - @modelcontextprotocol/sdk v1.25.1 (StdioClientTransport, StreamableHTTPClientTransport)
-- better-sqlite3 (requires Node 20+)
+- better-sqlite3 (requires Node 22+)
 - Zod for validation
 - AES-256-CBC encryption for API keys
 
@@ -94,11 +94,14 @@ mcp-chatbot/
 - React + TypeScript
 - Vite build tool
 - TanStack Query for server state
+- Recharts for data visualization
 - Server-Sent Events (SSE) for streaming
+- TobyAI branding throughout UI
 - No CDN dependencies (air-gap ready)
 
 **Infrastructure:**
 - Podman/Docker with compose
+- Node 22 Alpine base images
 - Rootless containers (Podman)
 - Hot reload in development
 - Multi-stage builds for production
@@ -157,6 +160,15 @@ export function asyncHandler(fn: (req: Request, res: Response) => Promise<void>)
 - CRITICAL: Uses SHA-256 hash of APP_SECRET as salt (NOT hardcoded)
 - Changing encryption breaks existing database (expected behavior)
 
+**backend/src/services/chat/ChatOrchestrator.ts** - Chat flow orchestration
+- `detectChartsInToolResult()` - Automatically detects chart-worthy data in MCP tool responses
+- `analyzeDataForChart()` - Analyzes data structure and creates ChartData objects
+- `flattenNestedArrayData()` - Flattens nested data structures for chart rendering
+- `filterChartableNumericFields()` - Excludes IDs and prioritizes health metrics
+- `selectRelevantMetrics()` - Analyzes user query to show only requested metrics
+- Parses JSON strings from MCP text fields
+- Streams chart data via SSE using 'chart_data' chunk type
+
 **backend/src/db/repository.ts** - SQLite operations
 - `mapRowToMCPServer()` - DRY helper for database row mapping
 - Handles LLM config and MCP server CRUD
@@ -164,8 +176,9 @@ export function asyncHandler(fn: (req: Request, res: Response) => Promise<void>)
 ### Frontend Core
 
 **frontend/src/hooks/useChat.ts** - Chat state management
-- System prompt: Forces English responses and MCP context
-- Message streaming with SSE
+- System prompt: Forces English responses, automatic date calculation, chart instructions
+- Instructs LLM to NOT create markdown tables/ASCII charts
+- Message streaming with SSE including chart data
 - Error handling and recovery
 
 **frontend/src/hooks/useConfig.ts** - Configuration state with TanStack Query
@@ -175,13 +188,41 @@ export function asyncHandler(fn: (req: Request, res: Response) => Promise<void>)
 **frontend/src/components/chat/MessageList.tsx** - Message rendering
 - React key: `${message.timestamp}-${message.role}` (NOT index)
 - Auto-scroll to bottom on new messages
+- Renders ChartRenderer components for chart data
+- Logo watermark in background (12% opacity, 80% brightness)
+
+**frontend/src/components/chat/ChartRenderer.tsx** - Chart visualization
+- Renders interactive Recharts charts from ChartData
+- Supports line, bar, area, and pie charts
+- Dark theme optimized with cyan accent colors
+- Responsive design with proper spacing
+- Automatic X-axis date formatting
+
+**frontend/src/components/chat/MessageInput.tsx** - Message input
+- Compact 2-row textarea for more chat space
+- Enter to send, Shift+Enter for new line
+- Auto-disabled when streaming
+
+**frontend/src/App.tsx** - Main application
+- TobyAI logo in header with glow effects
+- TobyAI logo in footer center
+- Tab navigation (Chat, Settings, About)
+- Health status indicator
+
+**frontend/src/components/common/About.tsx** - About page
+- TobyAI logo with pulse animation
+- Project information and features
+- Author contact information
+- Technology stack badges
 
 ### Shared Types
 
 **shared/types/chat.ts** - Core message types
-- `Message`: role, content, tool_calls, tool_call_id, **timestamp** (required for React keys)
+- `Message`: role, content, tool_calls, tool_call_id, **chartData**, **timestamp** (required for React keys)
 - `ToolCall`: OpenAI-compatible tool call format
-- `StreamChunk`: SSE chunk types (content, tool_call, done, error)
+- `StreamChunk`: SSE chunk types (content, tool_call, chart_data, done, error)
+- `ChartData`: Chart configuration with id, type, title, data, xKey, yKeys
+- Chart types: 'line', 'bar', 'area', 'pie'
 
 **shared/types/config.ts** - Configuration types
 - `LLMConfig`: baseURL, apiKey, model, temperature, maxTokens
@@ -418,19 +459,71 @@ Changed from index-based keys to timestamp-based keys for stable rendering:
 ```
 
 ### System Prompt - useChat
-Added system message to force English responses and provide MCP context:
+Enhanced system message with automatic date calculation and chart instructions:
 ```typescript
 const systemMessage: Message = {
   role: 'system',
-  content: 'You are an MCP (Model Context Protocol) chatbot assistant...',
+  content: 'You are an MCP (Model Context Protocol) chatbot assistant...' +
+    'When users ask for time-based data, calculate dates automatically. Today is ' + new Date().toISOString().split('T')[0] +
+    'DO NOT create markdown tables or ASCII charts - the UI handles visualization automatically.',
   timestamp: 0
 }
 ```
+
+### Node 22 Upgrade (December 2024)
+Upgraded from Node 20 to Node 22 Alpine:
+- Better npm dependency resolution
+- Fixes peer dependency conflicts with React 18.3.1
+- Added `--legacy-peer-deps` flag to frontend install
+- Updated Dockerfiles: `FROM node:22-alpine`
+
+### Automatic Chart Rendering (December 2024)
+Added comprehensive chart visualization system:
+
+**Backend (ChatOrchestrator.ts):**
+- `detectChartsInToolResult()` - Detects numeric data in MCP tool responses
+- `analyzeDataForChart()` - Creates ChartData objects from raw data
+- `flattenNestedArrayData()` - Handles nested structures like `{date: "...", stats: {...}}`
+- `filterChartableNumericFields()` - Excludes IDs (userProfileId, etc), prioritizes health metrics
+- `selectRelevantMetrics()` - Parses user query to show only requested metrics (e.g., "heart rate" → shows only HR)
+- Parses JSON strings from MCP text fields (Garmin returns `{type: "text", text: "{...}"}`)
+- Streams chart data via SSE using 'chart_data' chunk type
+
+**Frontend:**
+- `ChartRenderer.tsx` - Renders Recharts charts (line, bar, area, pie)
+- `MessageList.tsx` - Displays charts alongside messages
+- `useChat.ts` - Handles chart_data chunks in SSE stream
+- Dark theme optimized with cyan accents
+- Automatic date formatting on X-axis
+
+**Shared Types:**
+- `ChartData` - Chart configuration interface
+- `Message.chartData` - Array of charts per message
+- `StreamChunk` - Added 'chart_data' type
+
+### TobyAI Branding (December 2024)
+Added professional logo throughout the application:
+- **Header**: Logo with pulsing glow effect (50px height)
+- **Footer**: Centered logo with version info (30px height)
+- **Chat Background**: Watermark (576x384px, 12% opacity, 80% brightness)
+- **About Page**: Large logo with pulse animation (120px height)
+- Logo has transparent background (processed with sharp library)
+- Cyan glow effects matching app theme
+- Hover effects with scale and brightness
+
+### UI Layout Improvements (December 2024)
+Optimized chat interface for better UX:
+- Reduced input textarea from 3 rows to 2 rows
+- Reduced input padding for compact design
+- Larger chat area for more message visibility
+- Logo watermark in chat background (non-intrusive)
 
 ## External Resources
 
 - [Model Context Protocol Docs](https://modelcontextprotocol.io)
 - [OpenAI SDK Docs](https://github.com/openai/openai-node)
+- [Recharts Documentation](https://recharts.org)
+- [TanStack Query Docs](https://tanstack.com/query)
 - [Podman Documentation](https://docs.podman.io)
 - [Ollama Setup](https://ollama.ai)
 - [vLLM Documentation](https://docs.vllm.ai)

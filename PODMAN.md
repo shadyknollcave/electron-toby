@@ -132,7 +132,7 @@ docker-compose -f docker-compose.prod.yml up -d
 │  │   Frontend     │  │   Backend     │ │
 │  │   Container    │  │   Container   │ │
 │  │                │  │               │ │
-│  │ Node 18 Alpine │  │ Node 18       │ │
+│  │ Node 22 Alpine │  │ Node 22       │ │
 │  │ Vite Dev       │  │ Express       │ │
 │  │ Port 5173      │  │ Port 3000     │ │
 │  └────────────────┘  └───────────────┘ │

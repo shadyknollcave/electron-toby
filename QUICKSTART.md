@@ -18,10 +18,12 @@ http://localhost:5173
 ## What You Get
 
 ✅ **Complete web application** running in containers:
-- Modern React frontend (http://localhost:5173)
+- Modern React frontend with TobyAI branding (http://localhost:5173)
 - Express REST API backend (http://localhost:3000)
 - SQLite database with encrypted credentials
 - Real-time streaming chat with SSE
+- Automatic chart visualization for data responses
+- Intelligent metric selection based on queries
 - Health monitoring and status indicators
 
 ✅ **No installation required** on your host system:
@@ -103,6 +105,27 @@ If successful, you'll see: ✅ "LLM configuration saved successfully"
 ### 5. Start Chatting!
 
 Click "Chat" and send your first message!
+
+### 6. Using Chart Visualization
+
+When you ask for data (e.g., "Show my steps for the last 7 days"):
+
+✅ **The chatbot will:**
+- Automatically detect numeric data in tool responses
+- Generate beautiful interactive charts using Recharts
+- Show only the metrics you asked for
+- Provide a concise 2-3 sentence summary
+
+✅ **Smart metric selection:**
+- "My heart rate" → shows only heart rate
+- "How many steps?" → shows only step count
+- "Activity summary" → shows relevant health metrics
+
+✅ **Features:**
+- Hover over data points for details
+- Automatic date formatting
+- Responsive design
+- Dark theme optimized
 
 ## Daily Usage
 

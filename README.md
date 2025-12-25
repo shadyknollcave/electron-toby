@@ -7,8 +7,11 @@ A production-grade web application that enables conversational interaction with 
 ### Phase 1 (Complete)
 - ✅ **Configurable LLM Backend** - Works with any OpenAI-compatible endpoint (OpenAI, Ollama, vLLM, LocalAI, Azure OpenAI, AWS Bedrock, etc.)
 - ✅ **Real-time Chat Interface** - Clean, modern UI with Server-Sent Events (SSE) streaming
+- ✅ **Automatic Chart Visualization** - Interactive charts automatically generated from MCP tool data
+- ✅ **Intelligent Data Presentation** - Smart metric selection based on user queries
 - ✅ **Persistent Configuration** - SQLite database with encrypted API keys
 - ✅ **Health Monitoring** - Real-time connection status indicators
+- ✅ **TobyAI Branding** - Professional logo integration throughout the application
 - ✅ **Air-Gap Ready** - All assets bundled, no CDN dependencies
 - ✅ **Comprehensive Testing** - Integration tests with real components (no mocks)
 
@@ -51,7 +54,7 @@ See [PODMAN.md](PODMAN.md) for detailed container setup instructions.
 
 ### Option 2: Local Development
 
-- **Node.js** 18+ (for development)
+- **Node.js** 22+ (for development)
 - **npm** or **pnpm** (package manager)
 - **LLM Endpoint** (Ollama, vLLM, or any OpenAI-compatible API)
 
@@ -124,6 +127,20 @@ This will start:
 #### 5. Start Chatting!
 
 Switch back to "Chat" view and start a conversation!
+
+#### 6. Automatic Chart Visualization
+
+When you request data from MCP tools (e.g., "Show me my steps for the last 7 days"), the chatbot will:
+
+- **Automatically detect chart-worthy data** in MCP tool responses
+- **Intelligently select relevant metrics** based on your query
+- **Generate interactive charts** using Recharts library
+- **Provide concise summaries** without overwhelming data tables
+
+The system analyzes your question to show only the metrics you asked for:
+- "Show my heart rate" → displays only heart rate data
+- "How many steps?" → displays only step count
+- "My activity summary" → displays multiple relevant metrics
 
 ## LLM Setup Examples
 
@@ -346,4 +363,6 @@ Built with:
 - [React](https://react.dev) - UI framework
 - [Express](https://expressjs.com) - API server
 - [Vite](https://vitejs.dev) - Build tool
+- [Recharts](https://recharts.org) - Chart visualization
+- [TanStack Query](https://tanstack.com/query) - State management
 - [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) - Database
