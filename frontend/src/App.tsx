@@ -23,7 +23,10 @@ function AppContent() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>MCP Chatbot</h1>
+        <div className="header-brand">
+          <img src="/logo.png" alt="TobyAI Logo" className="app-logo" />
+          <h1>MCP Chatbot</h1>
+        </div>
         <div className="header-actions">
           <div className="health-indicator">
             {health?.status === 'healthy' ? (
@@ -51,6 +54,7 @@ function AppContent() {
       </main>
 
       <footer className="app-footer">
+        <img src="/logo.png" alt="TobyAI Logo" className="footer-logo" />
         <p>MCP-Enabled Chatbot v1.0.0</p>
       </footer>
     </div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Message } from '../../../../shared/types'
+import { ChartRenderer } from './ChartRenderer'
 
 interface MessageListProps {
   messages: Message[]
@@ -30,6 +31,15 @@ export function MessageList({ messages, isStreaming }: MessageListProps) {
           <div className="message-content">
             {message.content || <em>Thinking...</em>}
           </div>
+
+          {/* Render charts if present */}
+          {message.chartData && message.chartData.length > 0 && (
+            <div className="message-charts">
+              {message.chartData.map((chart) => (
+                <ChartRenderer key={chart.id} chartData={chart} />
+              ))}
+            </div>
+          )}
         </div>
       ))}
 

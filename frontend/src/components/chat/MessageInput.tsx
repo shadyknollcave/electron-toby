@@ -31,7 +31,7 @@ export function MessageInput({ onSend, disabled }: MessageInputProps) {
         onKeyDown={handleKeyDown}
         placeholder="Type your message... (Shift+Enter for new line)"
         disabled={disabled}
-        rows={3}
+        rows={2}
       />
       <button type="submit" disabled={disabled || !input.trim()}>
         Send

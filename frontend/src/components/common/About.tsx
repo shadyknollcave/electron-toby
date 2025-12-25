@@ -3,6 +3,7 @@ export function About() {
     <div className="about-page">
       <div className="about-container">
         <div className="about-header">
+          <img src="/logo.png" alt="TobyAI Logo" className="about-logo" />
           <h2>About MCP Chatbot</h2>
         </div>
 
