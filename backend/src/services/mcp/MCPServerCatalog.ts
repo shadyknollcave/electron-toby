@@ -97,10 +97,10 @@ export const MCP_SERVER_CATALOG: MCPServerTemplate[] = [
     type: 'stdio',
     stdio: {
       command: 'npx',
-      args: ['-y', '@modelcontextprotocol/server-sqlite', '/path/to/database.db'],
-      description: 'Official MCP SQLite server',
+      args: ['-y', 'mcp-server-sqlite-npx', '/path/to/database.db'],
+      description: 'MCP SQLite server',
       requiresNpx: true,
-      packageName: '@modelcontextprotocol/server-sqlite'
+      packageName: 'mcp-server-sqlite-npx'
     },
     configurationHints: {
       pathParameters: [
@@ -117,7 +117,7 @@ export const MCP_SERVER_CATALOG: MCPServerTemplate[] = [
       { name: 'list_tables', description: 'List all tables in database' },
       { name: 'describe_table', description: 'Get schema for a table' }
     ],
-    airgapInstructions: 'Package can be pre-installed: npm install -g @modelcontextprotocol/server-sqlite'
+    airgapInstructions: 'Package can be pre-installed: npm install -g mcp-server-sqlite-npx'
   },
   {
     id: 'postgres',
@@ -156,15 +156,15 @@ export const MCP_SERVER_CATALOG: MCPServerTemplate[] = [
     type: 'stdio',
     stdio: {
       command: 'npx',
-      args: ['-y', '@modelcontextprotocol/server-fetch'],
-      description: 'Official MCP HTTP fetch server',
+      args: ['-y', '@smithery/mcp-fetch'],
+      description: 'MCP HTTP fetch server',
       requiresNpx: true,
-      packageName: '@modelcontextprotocol/server-fetch'
+      packageName: '@smithery/mcp-fetch'
     },
     exampleTools: [
       { name: 'fetch', description: 'Make HTTP GET/POST/PUT/DELETE requests' }
     ],
-    airgapInstructions: 'Package can be pre-installed: npm install -g @modelcontextprotocol/server-fetch'
+    airgapInstructions: 'Package can be pre-installed: npm install -g @smithery/mcp-fetch'
   },
   {
     id: 'git',
@@ -174,10 +174,10 @@ export const MCP_SERVER_CATALOG: MCPServerTemplate[] = [
     type: 'stdio',
     stdio: {
       command: 'npx',
-      args: ['-y', '@modelcontextprotocol/server-git', '/path/to/repo'],
-      description: 'Official MCP Git server',
+      args: ['-y', 'mcp-git', '/path/to/repo'],
+      description: 'MCP Git server',
       requiresNpx: true,
-      packageName: '@modelcontextprotocol/server-git'
+      packageName: 'mcp-git'
     },
     configurationHints: {
       pathParameters: [
@@ -194,7 +194,7 @@ export const MCP_SERVER_CATALOG: MCPServerTemplate[] = [
       { name: 'git_log', description: 'View commit history' },
       { name: 'git_commit', description: 'Create commits' }
     ],
-    airgapInstructions: 'Package can be pre-installed: npm install -g @modelcontextprotocol/server-git'
+    airgapInstructions: 'Package can be pre-installed: npm install -g mcp-git'
   },
   {
     id: 'garmin',
