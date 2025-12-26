@@ -23,6 +23,10 @@ export function initializeDatabase(dbPath: string): Database.Database {
       model TEXT NOT NULL,
       temperature REAL DEFAULT 0.7,
       max_tokens INTEGER,
+      top_p REAL DEFAULT 1.0,
+      presence_penalty REAL DEFAULT 0.0,
+      frequency_penalty REAL DEFAULT 0.0,
+      system_prompt TEXT,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -62,6 +66,10 @@ export function createTestDatabase(): Database.Database {
       model TEXT NOT NULL,
       temperature REAL DEFAULT 0.7,
       max_tokens INTEGER,
+      top_p REAL DEFAULT 1.0,
+      presence_penalty REAL DEFAULT 0.0,
+      frequency_penalty REAL DEFAULT 0.0,
+      system_prompt TEXT,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 

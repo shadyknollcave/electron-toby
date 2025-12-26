@@ -1,8 +1,27 @@
 import { useState, useCallback } from 'react'
 import { apiClient } from '../services/api'
+import { useConfig } from './useConfig'
 import type { Message } from '../../../shared/types'
 
+// Default system prompt used if no custom prompt is configured
+const DEFAULT_SYSTEM_PROMPT = `You are an MCP (Model Context Protocol) development assistant that helps developers build, test, and troubleshoot MCP servers. You have access to connected MCP tools and can call them to demonstrate functionality, verify implementations, and help debug issues. Always respond in English.
+
+YOUR PRIMARY ROLE:
+- Help developers test and validate their MCP server implementations
+- Troubleshoot connection issues, tool execution errors, and schema problems
+- Demonstrate how to use MCP tools with concrete examples
+- Provide guidance on MCP server development best practices
+- Test tool functionality by actually calling the tools when requested
+
+IMPORTANT INSTRUCTIONS:
+1. When users ask you to test or call a tool, DO IT IMMEDIATELY - don't just explain how it works, actually execute it.
+2. Proactively use available MCP tools to verify they work correctly when troubleshooting.
+3. When you receive data from tools, provide a brief summary (2-3 sentences) interpreting the results. Focus on whether the tool worked correctly and what the data shows. The UI may render charts automatically.
+4. If a tool call fails, analyze the error message and suggest specific fixes (e.g., check arguments, verify server connection, review input schema).
+5. When discussing MCP concepts, be practical and example-driven - show working code and actual tool calls rather than abstract explanations.`
+
 export function useChat() {
+  const { data: config } = useConfig()
   const [messages, setMessages] = useState<Message[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -34,34 +53,23 @@ export function useChat() {
       const offsetStr = timezoneOffset >= 0 ? `+${timezoneOffset}` : `${timezoneOffset}`
       const timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone
 
-      // Add system message to ensure English responses and set context
-      const systemMessage: Message = {
-        role: 'system',
-        content: `You are an MCP (Model Context Protocol) development assistant that helps developers build, test, and troubleshoot MCP servers. You have access to connected MCP tools and can call them to demonstrate functionality, verify implementations, and help debug issues. Always respond in English.
+      // Use custom system prompt from config, or fall back to default
+      const basePrompt = config?.llm?.systemPrompt || DEFAULT_SYSTEM_PROMPT
 
-YOUR PRIMARY ROLE:
-- Help developers test and validate their MCP server implementations
-- Troubleshoot connection issues, tool execution errors, and schema problems
-- Demonstrate how to use MCP tools with concrete examples
-- Provide guidance on MCP server development best practices
-- Test tool functionality by actually calling the tools when requested
-
-IMPORTANT INSTRUCTIONS:
-1. When users ask you to test or call a tool, DO IT IMMEDIATELY - don't just explain how it works, actually execute it.
-2. Proactively use available MCP tools to verify they work correctly when troubleshooting.
-3. When you receive data from tools, provide a brief summary (2-3 sentences) interpreting the results. Focus on whether the tool worked correctly and what the data shows. The UI may render charts automatically.
-4. If a tool call fails, analyze the error message and suggest specific fixes (e.g., check arguments, verify server connection, review input schema).
-5. When discussing MCP concepts, be practical and example-driven - show working code and actual tool calls rather than abstract explanations.
+      // Always append time and date context
+      const timeContext = `
 
 TIME AND DATE CONTEXT:
 - Current UTC time: ${now.toISOString()}
 - User timezone: UTC${offsetStr} (${timezoneName})
 - User local date: ${utcDate}
 - When users say "today", use their local date: ${utcDate}
-- When calling MCP tools with date parameters, use YYYY-MM-DD format in user's timezone
+- When calling MCP tools with date parameters, use YYYY-MM-DD format in user's timezone`
 
-7. Be action-oriented - execute tools to demonstrate functionality rather than asking for permission unless the operation has side effects (writes, deletions, etc.).
-8. CRITICAL: Frame your responses from an MCP development/testing perspective. Example: "I tested the get_steps tool and it executed successfully. The tool returned no data for this date, which indicates the MCP server is working but the data source may be empty or not synced yet."`,
+      // Add system message to ensure English responses and set context
+      const systemMessage: Message = {
+        role: 'system',
+        content: basePrompt + timeContext,
         timestamp: 0 // System message always at timestamp 0
       }
 
@@ -111,7 +119,7 @@ TIME AND DATE CONTEXT:
     } finally {
       setIsStreaming(false)
     }
-  }, [messages])
+  }, [messages, config])
 
   const clearMessages = useCallback(() => {
     setMessages([])

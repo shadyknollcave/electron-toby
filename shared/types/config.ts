@@ -6,6 +6,10 @@ export interface LLMConfig {
   model: string
   temperature?: number
   maxTokens?: number
+  topP?: number
+  presencePenalty?: number
+  frequencyPenalty?: number
+  systemPrompt?: string
 }
 
 export interface AppConfig {
@@ -19,6 +23,10 @@ export interface LLMConfigRequest {
   model: string
   temperature?: number
   maxTokens?: number
+  topP?: number
+  presencePenalty?: number
+  frequencyPenalty?: number
+  systemPrompt?: string
 }
 
 export interface MCPServerRequest {

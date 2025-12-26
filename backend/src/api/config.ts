@@ -11,7 +11,11 @@ const LLMConfigSchema = z.object({
   apiKey: z.string().optional().nullable(),
   model: z.string().min(1),
   temperature: z.number().min(0).max(2).optional().default(0.7),
-  maxTokens: z.number().positive().optional().nullable()
+  maxTokens: z.number().positive().optional().nullable(),
+  topP: z.number().min(0).max(1).optional(),
+  presencePenalty: z.number().min(-2).max(2).optional(),
+  frequencyPenalty: z.number().min(-2).max(2).optional(),
+  systemPrompt: z.string().optional().nullable()
 })
 
 const StdioMCPServerSchema = z.object({

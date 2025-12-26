@@ -23,7 +23,11 @@ export class Repository {
         : undefined,
       model: row.model,
       temperature: row.temperature,
-      maxTokens: row.max_tokens
+      maxTokens: row.max_tokens,
+      topP: row.top_p,
+      presencePenalty: row.presence_penalty,
+      frequencyPenalty: row.frequency_penalty,
+      systemPrompt: row.system_prompt
     }
   }
 
@@ -33,14 +37,19 @@ export class Repository {
       : null
 
     const stmt = this.db.prepare(`
-      INSERT INTO llm_config (id, base_url, api_key_encrypted, model, temperature, max_tokens, updated_at)
-      VALUES (1, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO llm_config (id, base_url, api_key_encrypted, model, temperature, max_tokens,
+                              top_p, presence_penalty, frequency_penalty, system_prompt, updated_at)
+      VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(id) DO UPDATE SET
         base_url = excluded.base_url,
         api_key_encrypted = excluded.api_key_encrypted,
         model = excluded.model,
         temperature = excluded.temperature,
         max_tokens = excluded.max_tokens,
+        top_p = excluded.top_p,
+        presence_penalty = excluded.presence_penalty,
+        frequency_penalty = excluded.frequency_penalty,
+        system_prompt = excluded.system_prompt,
         updated_at = CURRENT_TIMESTAMP
     `)
 
@@ -49,7 +58,11 @@ export class Repository {
       apiKeyEncrypted,
       config.model,
       config.temperature ?? 0.7,
-      config.maxTokens ?? null
+      config.maxTokens ?? null,
+      config.topP ?? 1.0,
+      config.presencePenalty ?? 0.0,
+      config.frequencyPenalty ?? 0.0,
+      config.systemPrompt ?? null
     )
   }
 

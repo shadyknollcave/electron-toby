@@ -78,7 +78,10 @@ export class LLMService {
         messages: openaiMessages as any,
         tools: openaiTools,
         temperature: this.config.temperature ?? 0.7,
-        max_tokens: this.config.maxTokens
+        max_tokens: this.config.maxTokens,
+        top_p: this.config.topP,
+        presence_penalty: this.config.presencePenalty,
+        frequency_penalty: this.config.frequencyPenalty
       })
 
       const choice = response.choices[0]
@@ -123,6 +126,9 @@ export class LLMService {
       tools: openaiTools,
       temperature: this.config.temperature ?? 0.7,
       max_tokens: this.config.maxTokens,
+      top_p: this.config.topP,
+      presence_penalty: this.config.presencePenalty,
+      frequency_penalty: this.config.frequencyPenalty,
       stream: true
     })
 
