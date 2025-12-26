@@ -19,6 +19,30 @@ interface ChartRendererProps {
   chartData: ChartData
 }
 
+// Shared chart styling constants
+const CHART_STYLES = {
+  tooltip: {
+    backgroundColor: 'var(--bg-tertiary)',
+    border: '1px solid var(--glass-border)',
+    borderRadius: 'var(--radius-sm)',
+    color: 'var(--text-primary)'
+  },
+  legend: {
+    color: 'var(--text-secondary)',
+    fontSize: '0.875rem'
+  },
+  axis: {
+    stroke: 'var(--text-secondary)',
+    style: { fontSize: '0.875rem' }
+  },
+  grid: {
+    strokeDasharray: '3 3',
+    stroke: 'rgba(232, 235, 247, 0.1)'
+  }
+} as const
+
+const DEFAULT_COLOR = '#00D9FF'
+
 export function ChartRenderer({ chartData }: ChartRendererProps) {
   const { type, data, config, title } = chartData
 
@@ -35,77 +59,42 @@ export function ChartRenderer({ chartData }: ChartRendererProps) {
       case 'line':
         return (
           <LineChart {...commonProps}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(232, 235, 247, 0.1)" />
-            <XAxis
-              dataKey={config.xKey}
-              stroke="var(--text-secondary)"
-              style={{ fontSize: '0.875rem' }}
-            />
-            <YAxis
-              stroke="var(--text-secondary)"
-              style={{ fontSize: '0.875rem' }}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'var(--bg-tertiary)',
-                border: '1px solid var(--glass-border)',
-                borderRadius: 'var(--radius-sm)',
-                color: 'var(--text-primary)'
-              }}
-            />
-            <Legend
-              wrapperStyle={{
-                color: 'var(--text-secondary)',
-                fontSize: '0.875rem'
-              }}
-            />
-            {config.yKeys.map((yKey, index) => (
-              <Line
-                key={yKey}
-                type="monotone"
-                dataKey={yKey}
-                stroke={config.colors?.[index] || '#00D9FF'}
-                strokeWidth={2}
-                dot={{ fill: config.colors?.[index] || '#00D9FF', r: 4 }}
-                activeDot={{ r: 6 }}
-                name={config.labels?.[yKey] || yKey}
-              />
-            ))}
+            <CartesianGrid {...CHART_STYLES.grid} />
+            <XAxis dataKey={config.xKey} {...CHART_STYLES.axis} />
+            <YAxis {...CHART_STYLES.axis} />
+            <Tooltip contentStyle={CHART_STYLES.tooltip} />
+            <Legend wrapperStyle={CHART_STYLES.legend} />
+            {config.yKeys.map((yKey, index) => {
+              const color = config.colors?.[index] || DEFAULT_COLOR
+              return (
+                <Line
+                  key={yKey}
+                  type="monotone"
+                  dataKey={yKey}
+                  stroke={color}
+                  strokeWidth={2}
+                  dot={{ fill: color, r: 4 }}
+                  activeDot={{ r: 6 }}
+                  name={config.labels?.[yKey] || yKey}
+                />
+              )
+            })}
           </LineChart>
         )
 
       case 'bar':
         return (
           <BarChart {...commonProps}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(232, 235, 247, 0.1)" />
-            <XAxis
-              dataKey={config.xKey}
-              stroke="var(--text-secondary)"
-              style={{ fontSize: '0.875rem' }}
-            />
-            <YAxis
-              stroke="var(--text-secondary)"
-              style={{ fontSize: '0.875rem' }}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'var(--bg-tertiary)',
-                border: '1px solid var(--glass-border)',
-                borderRadius: 'var(--radius-sm)',
-                color: 'var(--text-primary)'
-              }}
-            />
-            <Legend
-              wrapperStyle={{
-                color: 'var(--text-secondary)',
-                fontSize: '0.875rem'
-              }}
-            />
+            <CartesianGrid {...CHART_STYLES.grid} />
+            <XAxis dataKey={config.xKey} {...CHART_STYLES.axis} />
+            <YAxis {...CHART_STYLES.axis} />
+            <Tooltip contentStyle={CHART_STYLES.tooltip} />
+            <Legend wrapperStyle={CHART_STYLES.legend} />
             {config.yKeys.map((yKey, index) => (
               <Bar
                 key={yKey}
                 dataKey={yKey}
-                fill={config.colors?.[index] || '#00D9FF'}
+                fill={config.colors?.[index] || DEFAULT_COLOR}
                 name={config.labels?.[yKey] || yKey}
               />
             ))}
@@ -116,51 +105,27 @@ export function ChartRenderer({ chartData }: ChartRendererProps) {
         return (
           <AreaChart {...commonProps}>
             <defs>
-              {config.yKeys.map((yKey, index) => (
-                <linearGradient key={`gradient-${yKey}`} id={`color-${yKey}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="5%"
-                    stopColor={config.colors?.[index] || '#00D9FF'}
-                    stopOpacity={0.8}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor={config.colors?.[index] || '#00D9FF'}
-                    stopOpacity={0.1}
-                  />
-                </linearGradient>
-              ))}
+              {config.yKeys.map((yKey, index) => {
+                const color = config.colors?.[index] || DEFAULT_COLOR
+                return (
+                  <linearGradient key={`gradient-${yKey}`} id={`color-${yKey}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={color} stopOpacity={0.8} />
+                    <stop offset="95%" stopColor={color} stopOpacity={0.1} />
+                  </linearGradient>
+                )
+              })}
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(232, 235, 247, 0.1)" />
-            <XAxis
-              dataKey={config.xKey}
-              stroke="var(--text-secondary)"
-              style={{ fontSize: '0.875rem' }}
-            />
-            <YAxis
-              stroke="var(--text-secondary)"
-              style={{ fontSize: '0.875rem' }}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'var(--bg-tertiary)',
-                border: '1px solid var(--glass-border)',
-                borderRadius: 'var(--radius-sm)',
-                color: 'var(--text-primary)'
-              }}
-            />
-            <Legend
-              wrapperStyle={{
-                color: 'var(--text-secondary)',
-                fontSize: '0.875rem'
-              }}
-            />
+            <CartesianGrid {...CHART_STYLES.grid} />
+            <XAxis dataKey={config.xKey} {...CHART_STYLES.axis} />
+            <YAxis {...CHART_STYLES.axis} />
+            <Tooltip contentStyle={CHART_STYLES.tooltip} />
+            <Legend wrapperStyle={CHART_STYLES.legend} />
             {config.yKeys.map((yKey, index) => (
               <Area
                 key={yKey}
                 type="monotone"
                 dataKey={yKey}
-                stroke={config.colors?.[index] || '#00D9FF'}
+                stroke={config.colors?.[index] || DEFAULT_COLOR}
                 strokeWidth={2}
                 fill={`url(#color-${yKey})`}
                 name={config.labels?.[yKey] || yKey}

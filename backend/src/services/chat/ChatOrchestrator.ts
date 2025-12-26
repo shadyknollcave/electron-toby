@@ -2,9 +2,21 @@ import { LLMService } from '../llm/LLMService.js'
 import { MCPService } from '../mcp/MCPService.js'
 import type { Message, ToolCall, ChartData } from '../../../../shared/types/index.js'
 import type { MCPTool, MCPToolResult } from '../../../../shared/types/index.js'
+import {
+  CHART_CONSTANTS,
+  METRIC_PATTERNS,
+  EXCLUDED_FIELD_PATTERNS,
+  DATE_FIELD_PATTERNS,
+  HEALTH_METRIC_PRIORITY,
+  isExcludedField,
+  isDateField,
+  findMatchingMetrics,
+  findMatchingFields
+} from './ChartPatterns.js'
 
-const MAX_ITERATIONS = 10
-const TOOL_EXECUTION_TIMEOUT = 30000 // 30 seconds
+// Tool execution constants
+const MAX_TOOL_EXECUTION_ITERATIONS = 10  // Safety limit for tool execution loop
+const TOOL_EXECUTION_TIMEOUT_MS = 30000   // 30 seconds per tool
 
 interface ToolCallDelta {
   index: number
@@ -71,10 +83,10 @@ export class ChatOrchestrator {
     let continueLoop = true
     let iteration = 0
 
-    while (continueLoop && iteration < MAX_ITERATIONS) {
+    while (continueLoop && iteration < MAX_TOOL_EXECUTION_ITERATIONS) {
       iteration++
 
-      console.log(`[ChatOrchestrator] Iteration ${iteration}/${MAX_ITERATIONS}`)
+      console.log(`[ChatOrchestrator] Iteration ${iteration}/${MAX_TOOL_EXECUTION_ITERATIONS}`)
 
       try {
         // Step 1: Call LLM and accumulate response (streams content to client)
@@ -171,8 +183,8 @@ export class ChatOrchestrator {
     }
 
     // Safety limit reached
-    if (iteration >= MAX_ITERATIONS) {
-      console.warn(`[ChatOrchestrator] Maximum iterations (${MAX_ITERATIONS}) reached`)
+    if (iteration >= MAX_TOOL_EXECUTION_ITERATIONS) {
+      console.warn(`[ChatOrchestrator] Maximum iterations (${MAX_TOOL_EXECUTION_ITERATIONS}) reached`)
       yield {
         type: 'error',
         error: 'Maximum tool execution iterations reached. Stopping for safety.'
@@ -279,8 +291,8 @@ export class ChatOrchestrator {
   ): Promise<MCPToolResult> {
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(
-        () => reject(new Error(`Tool execution timeout after ${TOOL_EXECUTION_TIMEOUT}ms`)),
-        TOOL_EXECUTION_TIMEOUT
+        () => reject(new Error(`Tool execution timeout after ${TOOL_EXECUTION_TIMEOUT_MS}ms`)),
+        TOOL_EXECUTION_TIMEOUT_MS
       )
     )
 
@@ -500,47 +512,14 @@ export class ChatOrchestrator {
    * @returns Selected metric keys (typically 1-2 fields)
    */
   private selectRelevantMetrics(numericKeys: string[], toolName: string, userQuery: string): string[] {
-    // Extract the primary metric from user query or tool name
-    const metricPatterns: Record<string, RegExp[]> = {
-      'steps': [/steps/i, /walked/i, /walking/i],
-      'heart_rate': [/heart.*rate/i, /hr\b/i, /pulse/i, /bpm/i],
-      'calories': [/calories/i, /kcal/i, /burned/i],
-      'distance': [/distance/i, /miles/i, /kilometers/i, /km\b/i],
-      'stress': [/stress/i, /anxiety/i],
-      'sleep': [/sleep/i, /asleep/i, /sleeping/i],
-      'battery': [/battery/i, /energy/i],
-      'floors': [/floors/i, /climbed/i, /stairs/i],
-      'spo2': [/spo2/i, /oxygen/i, /o2/i],
-      'respiration': [/respiration/i, /breathing/i, /breath/i]
-    }
-
     // Check user query first (higher priority than tool name)
-    let requestedMetric: string | null = null
+    const matchingMetrics = findMatchingMetrics(userQuery)
 
-    for (const [metric, patterns] of Object.entries(metricPatterns)) {
-      if (patterns.some(pattern => pattern.test(userQuery))) {
-        requestedMetric = metric
-        console.log(`[ChatOrchestrator] Detected metric from user query: ${metric}`)
-        break
-      }
-    }
+    if (matchingMetrics.length > 0) {
+      const metric = matchingMetrics[0]  // Use highest priority match
+      console.log(`[ChatOrchestrator] Detected metric from user query: ${metric.name}`)
 
-    // Fallback to tool name if query doesn't specify
-    if (!requestedMetric) {
-      for (const [metric, patterns] of Object.entries(metricPatterns)) {
-        if (patterns.some(pattern => pattern.test(toolName))) {
-          requestedMetric = metric
-          break
-        }
-      }
-    }
-
-    // If we identified the requested metric, filter to only those fields
-    if (requestedMetric && metricPatterns[requestedMetric]) {
-      const patterns = metricPatterns[requestedMetric]
-      const matchingKeys = numericKeys.filter(key =>
-        patterns.some(pattern => pattern.test(key))
-      )
+      const matchingKeys = findMatchingFields(numericKeys, metric)
 
       if (matchingKeys.length > 0) {
         console.log(`[ChatOrchestrator] Selected metric for '${toolName}': ${matchingKeys.slice(0, 2).join(', ')}`)
@@ -549,19 +528,24 @@ export class ChatOrchestrator {
       }
     }
 
-    // Fallback: for generic tools, prioritize the most interesting single metric
-    // Look for the primary health metric in priority order
-    const singleMetricPriority = [
-      /^totalSteps$/i,
-      /^restingHeartRate$/i,
-      /^heartRate$/i,
-      /^averageStressLevel$/i,
-      /^totalCalories$/i,
-      /^totalDistance/i
-    ]
+    // Fallback to tool name if query doesn't specify
+    const toolMetrics = findMatchingMetrics(toolName)
+    if (toolMetrics.length > 0) {
+      const metric = toolMetrics[0]
+      const matchingKeys = findMatchingFields(numericKeys, metric)
 
-    for (const pattern of singleMetricPriority) {
-      const match = numericKeys.find(key => pattern.test(key))
+      if (matchingKeys.length > 0) {
+        console.log(`[ChatOrchestrator] Selected metric from tool name: ${matchingKeys.slice(0, 2).join(', ')}`)
+        return matchingKeys.slice(0, 2)
+      }
+    }
+
+    // Fallback: for generic tools, prioritize the most interesting single metric
+    // Use health metric priority from configuration
+    for (const priorityMetric of HEALTH_METRIC_PRIORITY) {
+      const match = numericKeys.find(key =>
+        key.toLowerCase().includes(priorityMetric.toLowerCase())
+      )
       if (match) {
         console.log(`[ChatOrchestrator] Generic tool, showing primary metric: ${match}`)
         return [match]
@@ -581,41 +565,18 @@ export class ChatOrchestrator {
    * @returns Filtered and prioritized numeric keys
    */
   private filterChartableNumericFields(numericKeys: string[], toolName: string): string[] {
-    // Fields to exclude (IDs, internal fields, etc.)
-    const excludePatterns = [
-      /Id$/i,                    // userProfileId, summaryId, etc.
-      /^id$/i,                   // id field
-      /profile/i,                // profile-related IDs
-      /duration.*milliseconds/i, // millisecond durations
-      /version/i,                // version numbers
-      /goal/i,                   // goal fields (not actual values)
-      /constant/i                // boolean-like constants
-    ]
-
-    // Priority patterns (ranked by relevance)
-    const priorityPatterns = [
-      /steps/i,                  // totalSteps, steps
-      /calories/i,               // totalCalories, activeCalories
-      /heart.*rate/i,            // heartRate, restingHeartRate
-      /distance/i,               // totalDistance, distance
-      /stress/i,                 // stressLevel, averageStress
-      /battery/i,                // bodyBattery
-      /spo2/i,                   // oxygen saturation
-      /respiration/i,            // breathing rate
-      /sleep/i,                  // sleep metrics
-      /floors/i,                 // floors climbed
-      /active.*seconds/i         // activity time
-    ]
-
-    // Filter out excluded fields
-    const filtered = numericKeys.filter(key => {
-      return !excludePatterns.some(pattern => pattern.test(key))
-    })
+    // Filter out excluded fields using patterns from ChartPatterns module
+    const filtered = numericKeys.filter(key => !isExcludedField(key))
 
     // Sort by priority (matching patterns first, then alphabetically)
+    // Use field patterns from METRIC_PATTERNS for priority sorting
     const sorted = filtered.sort((a, b) => {
-      const aPriority = priorityPatterns.findIndex(p => p.test(a))
-      const bPriority = priorityPatterns.findIndex(p => p.test(b))
+      const aPriority = METRIC_PATTERNS.findIndex(metric =>
+        metric.fieldPatterns.some(pattern => pattern.test(a))
+      )
+      const bPriority = METRIC_PATTERNS.findIndex(metric =>
+        metric.fieldPatterns.some(pattern => pattern.test(b))
+      )
 
       if (aPriority !== -1 && bPriority !== -1) {
         return aPriority - bPriority
@@ -645,8 +606,8 @@ export class ChatOrchestrator {
    * @returns ChartData or null if not chart-worthy
    */
   private analyzeDataForChart(data: any[], toolName: string, userQuery: string = ''): ChartData | null {
-    // Require at least 2 data points
-    if (!data || data.length < 2) {
+    // Require minimum data points for meaningful visualization
+    if (!data || data.length < CHART_CONSTANTS.MIN_DATA_POINTS) {
       return null
     }
 
@@ -659,7 +620,8 @@ export class ChatOrchestrator {
     const firstItem = data[0]
     const keys = Object.keys(firstItem)
 
-    if (keys.length < 2) {
+    // Need at least X-axis + Y-axis (minimum 2 keys)
+    if (keys.length < CHART_CONSTANTS.MIN_KEYS) {
       return null
     }
 
@@ -696,8 +658,7 @@ export class ChatOrchestrator {
 
     // Select X-axis key (prefer date-like, then first string)
     let xKey = stringKeys[0]
-    const datePattern = /date|time|timestamp|day|month|year/i
-    const dateKey = stringKeys.find(k => datePattern.test(k))
+    const dateKey = stringKeys.find(k => isDateField(k))
     if (dateKey) {
       xKey = dateKey
     }
@@ -771,8 +732,7 @@ export class ChatOrchestrator {
     const firstValue = data[0][xKey]
 
     // Check if X-axis is date-like
-    const datePattern = /date|time|timestamp|day|month|year/i
-    if (datePattern.test(xKey) || firstValue instanceof Date) {
+    if (isDateField(xKey) || firstValue instanceof Date) {
       return 'area'
     }
 
@@ -813,7 +773,7 @@ export class ChatOrchestrator {
    * @returns Array of hex color codes
    */
   private generateChartColors(count: number): string[] {
-    const palette = ['#00D9FF', '#7B2CBF', '#39FF14', '#FFD60A', '#FF206E']
+    const palette = [CHART_CONSTANTS.DEFAULT_COLOR, '#7B2CBF', '#39FF14', '#FFD60A', '#FF206E']
     const colors: string[] = []
 
     for (let i = 0; i < count; i++) {
