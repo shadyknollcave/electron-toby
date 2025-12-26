@@ -1175,7 +1175,7 @@ form button[type="submit"]:disabled {
 }
 
 .about-logo {
-  height: 120px;
+  height: 144px;
   width: auto;
   /* Custom glow parameters for about page logo */
   --glow-size-primary: 20px;
