@@ -211,8 +211,7 @@ describe('MCPService', () => {
 
   describe('executeTool', () => {
     test('should execute tool and return result', async () => {
-      const config = await testServer.setup()
-
+      // Set custom tool response BEFORE setup() to embed it in the script
       testServer.setToolResponse('test_tool', {
         content: [
           {
@@ -221,6 +220,8 @@ describe('MCPService', () => {
           }
         ]
       })
+
+      const config = await testServer.setup()
 
       const serverConfig: MCPServerConfig = {
         id: 'test-1',
