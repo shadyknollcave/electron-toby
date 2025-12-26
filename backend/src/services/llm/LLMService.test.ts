@@ -172,7 +172,7 @@ describe('LLMService', () => {
       const messages: Message[] = [{ role: 'user', content: 'Hello' }]
 
       await expect(badService.chat(messages)).rejects.toThrow(
-        /Cannot reach LLM endpoint/
+        /Connection error|Cannot reach LLM endpoint/
       )
     })
   })

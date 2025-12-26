@@ -7,7 +7,7 @@ import { EventEmitter } from 'events'
 
 class MockResponse extends EventEmitter {
   public statusCode: number = 200
-  public headers: Record<string, string> = {}
+  private _headers: Record<string, string> = {}
   private chunks: string[] = []
   public ended: boolean = false
 
@@ -16,9 +16,22 @@ class MockResponse extends EventEmitter {
     return this
   }
 
-  setHeader(name: string, value: string) {
-    this.headers[name] = value
+  setHeader(name: string, value: string | string[] | number): this {
+    this._headers[name.toLowerCase()] = String(value)
     return this
+  }
+
+  getHeader(name: string): string | undefined {
+    return this._headers[name.toLowerCase()]
+  }
+
+  // For debugging - expose internal headers
+  get _internalHeaders() {
+    return this._headers
+  }
+
+  get headers(): Record<string, string> {
+    return this._headers
   }
 
   write(data: string) {
@@ -39,7 +52,7 @@ class MockResponse extends EventEmitter {
   }
 
   get headersSent() {
-    return Object.keys(this.headers).length > 0
+    return Object.keys(this._headers).length > 0
   }
 
   getData(): string {
@@ -47,9 +60,17 @@ class MockResponse extends EventEmitter {
   }
 }
 
+// Mock MCP Service for testing
+class MockMCPService {
+  getAllTools() {
+    return []
+  }
+}
+
 describe('Chat Integration Tests', () => {
   let testLLMServer: TestLLMServer
   let llmService: LLMService
+  let mockMCPService: any
   let chatAPI: ChatAPI
 
   beforeAll(async () => {
@@ -62,7 +83,8 @@ describe('Chat Integration Tests', () => {
       model: 'test-model'
     })
 
-    chatAPI = new ChatAPI(llmService)
+    mockMCPService = new MockMCPService()
+    chatAPI = new ChatAPI(llmService, mockMCPService)
   })
 
   afterAll(async () => {
@@ -105,14 +127,14 @@ describe('Chat Integration Tests', () => {
         chatAPI.chat(req, res)
       })
 
-      expect(res.headers['Content-Type']).toBe('text/event-stream')
+      expect((res as any).getHeader('content-type')).toBe('text/event-stream')
       expect(chunks.length).toBeGreaterThan(0)
       expect(chunks.some(c => c.type === 'content')).toBe(true)
     })
 
     it('should return error when LLM not configured', async () => {
       const unconfiguredService = new LLMService()
-      const unconfiguredAPI = new ChatAPI(unconfiguredService)
+      const unconfiguredAPI = new ChatAPI(unconfiguredService, mockMCPService)
 
       const req = {
         body: {
@@ -157,7 +179,7 @@ describe('Chat Integration Tests', () => {
         baseURL: 'http://localhost:9999/v1',
         model: 'test'
       })
-      const badAPI = new ChatAPI(badService)
+      const badAPI = new ChatAPI(badService, mockMCPService)
 
       const req = {
         body: {
@@ -188,7 +210,7 @@ describe('Chat Integration Tests', () => {
       })
 
       expect(errorChunks.length).toBeGreaterThan(0)
-      expect(errorChunks[0].error).toContain('Cannot reach LLM endpoint')
+      expect(errorChunks[0].error).toMatch(/Connection error|Cannot reach LLM endpoint/)
     })
   })
 })

@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach } from '@jest/globals'
+import { describe, test, expect, beforeEach, afterEach } from 'vitest'
 import { MCPService } from './MCPService.js'
 import { ConfigService } from '../config/ConfigService.js'
 import { Repository } from '../../db/repository.js'
