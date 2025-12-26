@@ -48,9 +48,15 @@ function AppContent() {
       </header>
 
       <main className="app-main">
-        {currentView === 'chat' && <ChatInterface />}
-        {currentView === 'config' && <ConfigPanel />}
-        {currentView === 'about' && <About />}
+        <div style={{ display: currentView === 'chat' ? 'flex' : 'none', width: '100%', height: '100%', flexDirection: 'column' }}>
+          <ChatInterface />
+        </div>
+        <div style={{ display: currentView === 'config' ? 'flex' : 'none', width: '100%', height: '100%', flexDirection: 'column' }}>
+          <ConfigPanel />
+        </div>
+        <div style={{ display: currentView === 'about' ? 'flex' : 'none', width: '100%', height: '100%', flexDirection: 'column' }}>
+          <About />
+        </div>
       </main>
 
       <footer className="app-footer">
