@@ -67,7 +67,7 @@ describe('LLMService', () => {
   describe('chat', () => {
     it('should send messages and receive response', async () => {
       const messages: Message[] = [
-        { role: 'user', content: 'Hello, how are you?' }
+        { role: 'user', content: 'Hello, how are you?', timestamp: Date.now() }
       ]
 
       testServer.setDefaultResponse({
@@ -96,7 +96,7 @@ describe('LLMService', () => {
 
     it('should include tools when provided', async () => {
       const messages: Message[] = [
-        { role: 'user', content: 'What is 2+2?' }
+        { role: 'user', content: 'What is 2+2?', timestamp: Date.now() }
       ]
 
       const tools = [
@@ -122,7 +122,7 @@ describe('LLMService', () => {
 
     it('should handle tool calls in response', async () => {
       const messages: Message[] = [
-        { role: 'user', content: 'What is 2+2?' }
+        { role: 'user', content: 'What is 2+2?', timestamp: Date.now() }
       ]
 
       testServer.setDefaultResponse({
@@ -157,7 +157,7 @@ describe('LLMService', () => {
 
     it('should throw error when not configured', async () => {
       const unconfiguredService = new LLMService()
-      const messages: Message[] = [{ role: 'user', content: 'Hello' }]
+      const messages: Message[] = [{ role: 'user', content: 'Hello', timestamp: Date.now() }]
 
       await expect(unconfiguredService.chat(messages)).rejects.toThrow(
         'LLM service not configured'
@@ -169,7 +169,7 @@ describe('LLMService', () => {
         baseURL: 'http://localhost:9999/v1',
         model: 'test'
       })
-      const messages: Message[] = [{ role: 'user', content: 'Hello' }]
+      const messages: Message[] = [{ role: 'user', content: 'Hello', timestamp: Date.now() }]
 
       await expect(badService.chat(messages)).rejects.toThrow(
         /Connection error|Cannot reach LLM endpoint/
@@ -180,7 +180,7 @@ describe('LLMService', () => {
   describe('chatStream', () => {
     it('should stream response chunks', async () => {
       const messages: Message[] = [
-        { role: 'user', content: 'Tell me a story' }
+        { role: 'user', content: 'Tell me a story', timestamp: Date.now() }
       ]
 
       testServer.setDefaultResponse({

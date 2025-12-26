@@ -1,18 +1,23 @@
-# CLAUDE.md - MCP-Enabled Chatbot
+# CLAUDE.md
 
-This file provides context for Claude Code instances working on this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
-**MCP-Enabled Chatbot** is a production-grade web application that enables conversational interaction with configurable LLM backends while supporting Model Context Protocol (MCP) servers for extended capabilities. Built with TypeScript, React, and Express, designed for air-gap compatibility.
+**MCP-Enabled Chatbot** (also known as **TobyAI**) is a production-grade web application that enables conversational interaction with configurable LLM backends while supporting Model Context Protocol (MCP) servers for extended capabilities. Built with TypeScript, React, and Express, designed for air-gap compatibility.
 
 The chatbot acts as an **MCP assistant** - helping developers troubleshoot and develop MCP servers. It has access to MCP tools that can interact with the system.
+
+**Note:** The directory name may be `electron-toby` but this is a web-based application (React + Express), not an Electron app. The project is branded as "TobyAI" in the UI.
 
 ## Quick Commands
 
 ### Development (Containerized - Recommended)
 ```bash
-# Start development environment with hot reload
+# Quick start (uses start.sh script)
+./start.sh
+
+# Or manually with podman-compose
 podman-compose up --build
 
 # View logs
@@ -20,10 +25,14 @@ podman-compose logs -f
 
 # Stop services
 podman-compose down
+# Or use stop.sh script
+./stop.sh
 
 # Rebuild after changes
 podman-compose up --build
 ```
+
+**Note:** The `start.sh` script validates your `.env` file and provides helpful prompts. Use it for first-time setup.
 
 ### Development (Local - Requires Node.js)
 ```bash
@@ -169,9 +178,24 @@ export function asyncHandler(fn: (req: Request, res: Response) => Promise<void>)
 - Parses JSON strings from MCP text fields
 - Streams chart data via SSE using 'chart_data' chunk type
 
+**backend/src/services/chat/ChartPatterns.ts** - Chart detection configuration
+- Centralized chart pattern definitions (DRY refactoring)
+- `CHART_CONSTANTS` - Thresholds for chart detection
+- `METRIC_PATTERNS` - Regex patterns for identifying metric types
+- `EXCLUDED_FIELD_PATTERNS` - Fields to exclude from charts (IDs, internal fields)
+- `DATE_FIELD_PATTERNS` - Patterns for date/time field detection
+- `HEALTH_METRIC_PRIORITY` - Priority ordering for health metrics
+- Helper functions: `isExcludedField()`, `isDateField()`, `findMatchingMetrics()`, `findMatchingFields()`
+
 **backend/src/db/repository.ts** - SQLite operations
 - `mapRowToMCPServer()` - DRY helper for database row mapping
 - Handles LLM config and MCP server CRUD
+
+**backend/src/services/mcp/MCPServerCatalog.ts** - Built-in MCP server catalog
+- Pre-configured list of popular MCP servers for air-gap environments
+- Includes server descriptions, installation instructions, and default configurations
+- Used by Tool Discovery UI to help users set up servers without external resources
+- Supports both stdio and HTTP/SSE server types
 
 ### Frontend Core
 
@@ -214,6 +238,18 @@ export function asyncHandler(fn: (req: Request, res: Response) => Promise<void>)
 - Project information and features
 - Author contact information
 - Technology stack badges
+
+**frontend/src/components/config/MCPServerConfig.tsx** - MCP server configuration
+- Add/remove MCP servers (stdio and HTTP)
+- Toggle servers on/off
+- Server status indicators
+- Configuration validation
+
+**frontend/src/components/discovery/ToolDiscoveryPanel.tsx** - Tool discovery interface
+- Browse built-in MCP server catalog
+- View server descriptions and requirements
+- Quick server setup for air-gap environments
+- Test tool discovery
 
 ### Shared Types
 
@@ -286,13 +322,44 @@ export class ExampleAPI {
 3. Update repository methods in `backend/src/db/repository.ts`
 4. Consider migration strategy (currently: delete database and reconfigure)
 
-### Adding MCP Server Support (Phase 2-3)
+### Adding a New MCP Server to the Catalog
 
-1. MCP SDK imported: `@modelcontextprotocol/sdk`
-2. Transports available: `StdioClientTransport`, `StreamableHTTPClientTransport`
-3. Server lifecycle in `backend/src/services/mcp/MCPService.ts` (to be created)
-4. Tool discovery: `client.listTools()`
-5. Tool execution: `client.callTool(name, args)`
+To add a new server to the built-in catalog for air-gap environments:
+
+1. Edit `backend/src/services/mcp/MCPServerCatalog.ts`
+2. Add entry to `MCP_SERVER_CATALOG` array:
+```typescript
+{
+  id: 'unique-server-id',
+  name: 'Server Name',
+  description: 'Brief description of what the server does',
+  type: 'stdio' | 'http',
+  // For stdio servers:
+  defaultConfig: {
+    command: 'node',
+    args: ['path/to/server.js'],
+    env: { KEY: 'value' }
+  },
+  // For HTTP servers:
+  defaultConfig: {
+    url: 'http://localhost:3000',
+    headers: { 'Authorization': 'Bearer token' }
+  },
+  installInstructions: 'How to install this server',
+  requiresAuth: false
+}
+```
+3. Server will appear in Tool Discovery UI automatically
+
+### Working with MCP Servers
+
+MCP integration is fully implemented:
+1. **MCP SDK**: `@modelcontextprotocol/sdk` v1.25.1
+2. **Transports**: Both `StdioClientTransport` and `StreamableHTTPClientTransport` supported
+3. **Server lifecycle**: Managed by `backend/src/services/mcp/MCPService.ts`
+4. **Tool discovery**: Automatic via `client.listTools()`
+5. **Tool execution**: Automatic in chat via `client.callTool(name, args)`
+6. **Error isolation**: Per-server error handling (one failure doesn't affect others)
 
 ## Testing Strategy
 
@@ -310,14 +377,25 @@ await testLLM.stop()
 ### Running Tests
 
 ```bash
-# All tests
+# All tests (from project root)
 npm test
+
+# Backend tests only
+npm test --workspace=backend
 
 # Backend integration tests
 npm run test:integration --workspace=backend
 
 # Watch mode
 npm run test:watch --workspace=backend
+
+# In containers (recommended for WSL environments)
+podman exec -it mcp-chatbot-backend npm test
+```
+
+**Important for WSL users:** If you encounter path errors with `npm test`, run tests inside the container instead:
+```bash
+podman exec -it mcp-chatbot-backend npm test
 ```
 
 ## Troubleshooting
@@ -376,29 +454,41 @@ useEffect(() => {
 - [x] Podman containerization
 - [x] Code review and refactoring (DRY, security fixes)
 
-### Phase 2: MCP stdio Integration 🚧 TODO
-- [ ] StdioClientTransport implementation
-- [ ] Process lifecycle management
-- [ ] Tool discovery from stdio servers
-- [ ] Tool execution in chat flow
+### Phase 2: MCP stdio Integration ✅ COMPLETE
+- [x] StdioClientTransport implementation
+- [x] Process lifecycle management
+- [x] Tool discovery from stdio servers
+- [x] Tool execution in chat flow
 
-### Phase 3: MCP HTTP/SSE Integration 🚧 TODO
-- [ ] StreamableHTTPClientTransport implementation
-- [ ] HTTP server configuration UI
-- [ ] SSE connection management
+### Phase 3: MCP HTTP/SSE Integration ✅ COMPLETE
+- [x] StreamableHTTPClientTransport implementation
+- [x] HTTP server configuration UI
+- [x] SSE connection management
 
-### Phase 4: Advanced Configuration 🚧 TODO
-- [ ] MCP server enable/disable toggle
-- [ ] Server health monitoring
-- [ ] Connection status indicators
+### Phase 4: Advanced Configuration ✅ COMPLETE
+- [x] MCP server enable/disable toggle
+- [x] Server health monitoring
+- [x] Connection status indicators
+- [x] Tool Discovery UI for air-gap environments
+- [x] Server configuration forms
 
-### Phase 5: Tool Execution 🚧 TODO
-- [ ] Automatic tool calling in chat
-- [ ] Tool result display
-- [ ] Error recovery
+### Phase 5: Tool Execution ✅ COMPLETE
+- [x] Automatic tool calling in chat
+- [x] Tool result display
+- [x] Error recovery
+- [x] Automatic chart generation from tool results
+- [x] Intelligent metric selection
 
-### Phase 6: Production Optimizations 🚧 TODO
-- [ ] Performance tuning
+### Phase 6: UI/UX Enhancements ✅ COMPLETE
+- [x] Persistent chat history across navigation
+- [x] TobyAI branding integration
+- [x] Configurable hyperparameters (temperature, maxTokens)
+- [x] Configurable system prompt
+- [x] Optimized layout for maximum chat area
+
+### Phase 7: Production Optimizations 🚧 IN PROGRESS
+- [x] All tests passing (27/27)
+- [x] Performance tuning
 - [ ] Bundle size optimization
 - [ ] Database migrations
 - [ ] Monitoring and logging
@@ -517,6 +607,32 @@ Optimized chat interface for better UX:
 - Reduced input padding for compact design
 - Larger chat area for more message visibility
 - Logo watermark in chat background (non-intrusive)
+- Increased chatbot width from 1400px to 1800px
+- Optimized header, footer, and menu sizes to maximize chat area
+
+### Hyperparameters and System Prompt Configuration (December 2024)
+Added full LLM configuration control:
+- **Temperature**: Control response randomness (0-2, default 0.7)
+- **Max Tokens**: Limit response length (1-32000, default 4096)
+- **System Prompt**: Customize chatbot behavior and context
+- Helpful tooltips explaining each parameter
+- Real-time configuration updates
+- Settings persisted in encrypted database
+
+### Persistent Chat History (December 2024)
+Improved user experience:
+- Chat messages preserved when navigating to Settings/About pages
+- Fixed timezone issues in message timestamps
+- Updated system prompt to include current date for accurate date calculations
+- Chat state properly managed with React hooks
+
+### Tool Discovery UI (December 2024)
+Added air-gap friendly MCP server management:
+- Browse available MCP servers from built-in catalog
+- View server descriptions and capabilities
+- Configure and add servers without external resources
+- Test tool discovery for stdio and HTTP servers
+- Server configuration forms integrated in Discovery tab
 
 ## External Resources
 
@@ -530,14 +646,18 @@ Optimized chat interface for better UX:
 
 ## Notes for Claude Code
 
-- This codebase follows **TDD without mocks** - use real test servers
-- All API methods should use **asyncHandler wrapper**
+- This codebase follows **TDD without mocks** - use real test servers (TestLLMServer, TestMCPServer)
+- All API methods should use **asyncHandler wrapper** for consistent error handling
 - Database schema changes require **manual migration** (delete and reconfigure)
 - Encryption changes **invalidate existing data** (expected behavior)
-- Always use **timestamp-based React keys**, never index
+- Always use **timestamp-based React keys**, never index (e.g., `key={${message.timestamp}-${message.role}}`)
 - The app is an **MCP assistant** - system prompt enforces this context
 - Containerization is **preferred** over local Node.js installation
-- This project values **simplicity over complexity**
+- This project values **simplicity over complexity** - don't add features that aren't requested
+- **Chart patterns** are centralized in `ChartPatterns.ts` - update there to modify chart detection logic
+- **MCP server catalog** in `MCPServerCatalog.ts` enables air-gap deployment
+- **WSL users**: Run tests inside containers to avoid path issues
+- Project is **feature-complete** for Phases 1-6, now in optimization phase
 
 
 

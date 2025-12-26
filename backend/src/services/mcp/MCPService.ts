@@ -518,7 +518,7 @@ export class MCPService {
 
       return {
         content: validContent,
-        isError: result.isError || false
+        isError: Boolean(result.isError)
       }
     } catch (error: any) {
       console.error(`[MCPService] Error executing tool '${toolName}' on '${connection.serverName}':`)
@@ -577,6 +577,7 @@ export class MCPService {
    */
   isServerConnected(serverId: string): boolean {
     const connection = this.connections.get(serverId)
-    return connection?.status === 'connected' ?? false
+    if (!connection) return false
+    return connection.status === 'connected'
   }
 }

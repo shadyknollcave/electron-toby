@@ -1,10 +1,13 @@
+/// <reference types="vite/client" />
+
 import type {
   Message,
   LLMConfig,
   MCPServerConfig,
   MCPServerRequest,
   HealthCheckResult,
-  AppConfig
+  AppConfig,
+  StreamChunk
 } from '../../../shared/types'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
@@ -94,12 +97,7 @@ export class APIClient {
   }
 
   // Chat with SSE streaming
-  async *chatStream(messages: Message[]): AsyncGenerator<{
-    type: 'content' | 'tool_call' | 'done' | 'error'
-    content?: string
-    tool_call?: any
-    error?: string
-  }> {
+  async *chatStream(messages: Message[]): AsyncGenerator<StreamChunk> {
     const response = await fetch(`${this.baseURL}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

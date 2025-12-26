@@ -1,4 +1,4 @@
-import { Request, Response } from 'express'
+import { Request, Response, NextFunction } from 'express'
 import { LLMService } from '../services/llm/LLMService.js'
 import { ConfigService } from '../services/config/ConfigService.js'
 import { MCPService } from '../services/mcp/MCPService.js'
@@ -11,7 +11,7 @@ export class HealthAPI {
     private mcpService: MCPService
   ) {}
 
-  async check(req: Request, res: Response): Promise<void> {
+  async check(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const llmConfig = this.configService.getLLMConfig()
       const mcpServers = this.configService.getEnabledMCPServers()

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../services/api'
-import type { LLMConfig, MCPServerConfig, MCPServerRequest } from '../../../shared/types'
+import type { LLMConfig, MCPServerRequest } from '../../../shared/types'
 
 export function useConfig() {
   const queryClient = useQueryClient()

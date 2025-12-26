@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiClient } from '../../services/api'
 import './ToolDiscoveryPanel.css'
 
 interface MCPServerTemplate {
@@ -73,7 +72,7 @@ export function ToolDiscoveryPanel() {
   })
 
   // Fetch connected tools
-  const { data: connectedTools, refetch: refetchTools } = useQuery({
+  const { data: connectedTools } = useQuery({
     queryKey: ['discovery', 'tools'],
     queryFn: async () => {
       const response = await fetch('/api/discovery/tools')

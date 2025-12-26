@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import { config as dotenvConfig } from 'dotenv'
 import path from 'path'
+import type { Server } from 'http'
 import { initializeDatabase } from './db/schema.js'
 import { Repository } from './db/repository.js'
 import { EncryptionService } from './services/config/EncryptionService.js'
@@ -14,136 +15,179 @@ import { HealthAPI } from './api/health.js'
 import { MCPAPI } from './api/mcp.js'
 import { DiscoveryAPI } from './api/discovery.js'
 
-// Load environment variables
+// Load environment variables (for web mode)
 dotenvConfig()
 
-const PORT = process.env.PORT || 3000
-const APP_SECRET = process.env.APP_SECRET
-const DATABASE_PATH = process.env.DATABASE_PATH || './data/config.db'
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173'
-
-if (!APP_SECRET) {
-  console.error('ERROR: APP_SECRET environment variable is required')
-  process.exit(1)
+/**
+ * Server configuration options
+ * Used by both web mode and Electron mode
+ */
+export interface ServerOptions {
+  databasePath?: string
+  appSecret?: string
+  port?: number
+  frontendURL?: string
 }
 
-// Initialize services
-const db = initializeDatabase(DATABASE_PATH)
-const encryption = new EncryptionService(APP_SECRET)
-const repository = new Repository(db, encryption)
-const configService = new ConfigService(repository)
+/**
+ * Get configuration from options or environment variables
+ * Options take precedence over environment variables
+ */
+function getServerConfig(options?: ServerOptions) {
+  const PORT = options?.port || Number(process.env.PORT) || 3000
+  const APP_SECRET = options?.appSecret || process.env.APP_SECRET
+  const DATABASE_PATH = options?.databasePath || process.env.DATABASE_PATH || './data/config.db'
+  const FRONTEND_URL = options?.frontendURL || process.env.FRONTEND_URL || 'http://localhost:5173'
 
-// Initialize MCP service
-const mcpService = new MCPService(configService)
+  if (!APP_SECRET) {
+    throw new Error('APP_SECRET is required (provide via options or environment variable)')
+  }
 
-// Initialize LLM service with saved config (if exists)
-const llmConfig = configService.getLLMConfig()
-const llmService = new LLMService(llmConfig || undefined)
+  return { PORT, APP_SECRET, DATABASE_PATH, FRONTEND_URL }
+}
 
-// Initialize API handlers
-const chatAPI = new ChatAPI(llmService, mcpService)
-const configAPI = new ConfigAPI(configService, llmService, mcpService)
-const healthAPI = new HealthAPI(llmService, configService, mcpService)
-const mcpAPI = new MCPAPI(mcpService)
-const discoveryAPI = new DiscoveryAPI(mcpService)
+/**
+ * Start the Express server
+ * @param options - Server configuration options
+ * @returns HTTP server instance
+ */
+export async function startServer(options?: ServerOptions): Promise<Server> {
+  // Get configuration
+  const { PORT, APP_SECRET, DATABASE_PATH, FRONTEND_URL } = getServerConfig(options)
 
-// Create Express app
-const app = express()
+  // Initialize services
+  const db = initializeDatabase(DATABASE_PATH)
+  const encryption = new EncryptionService(APP_SECRET)
+  const repository = new Repository(db, encryption)
+  const configService = new ConfigService(repository)
 
-// Middleware
-app.use(cors({
-  origin: FRONTEND_URL.split(','),
-  credentials: true
-}))
-app.use(express.json())
+  // Initialize MCP service
+  const mcpService = new MCPService(configService)
 
-// Request logging
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path}`)
-  next()
-})
+  // Initialize LLM service with saved config (if exists)
+  const llmConfig = configService.getLLMConfig()
+  const llmService = new LLMService(llmConfig || undefined)
 
-// Routes
-app.get('/api/health', (req, res) => healthAPI.check(req, res))
+  // Initialize API handlers
+  const chatAPI = new ChatAPI(llmService, mcpService)
+  const configAPI = new ConfigAPI(configService, llmService, mcpService)
+  const healthAPI = new HealthAPI(llmService, configService, mcpService)
+  const mcpAPI = new MCPAPI(mcpService)
+  const discoveryAPI = new DiscoveryAPI(mcpService)
 
-app.get('/api/config', (req, res) => configAPI.getConfig(req, res))
-app.put('/api/config/llm', (req, res) => configAPI.updateLLMConfig(req, res))
+  // Create Express app
+  const app = express()
 
-app.get('/api/config/mcp', (req, res) => configAPI.getMCPServers(req, res))
-app.post('/api/config/mcp', (req, res) => configAPI.addMCPServer(req, res))
-app.delete('/api/config/mcp/:id', (req, res) => configAPI.deleteMCPServer(req, res))
-app.patch('/api/config/mcp/:id/toggle', (req, res) => configAPI.toggleMCPServer(req, res))
+  // Middleware
+  app.use(cors({
+    origin: FRONTEND_URL.split(','),
+    credentials: true
+  }))
+  app.use(express.json())
 
-app.get('/api/mcp/tools', (req, res) => mcpAPI.getTools(req, res))
-app.get('/api/mcp/status', (req, res) => mcpAPI.getStatus(req, res))
-app.post('/api/mcp/servers/:id/reconnect', (req, res) => mcpAPI.reconnectServer(req, res))
-
-app.get('/api/discovery/catalog', (req, res) => discoveryAPI.getCatalog(req, res))
-app.get('/api/discovery/catalog/:id', (req, res) => discoveryAPI.getServerTemplate(req, res))
-app.get('/api/discovery/catalog/category/:category', (req, res) => discoveryAPI.getServersByCategory(req, res))
-app.get('/api/discovery/catalog/search', (req, res) => discoveryAPI.searchCatalog(req, res))
-app.get('/api/discovery/tools', (req, res) => discoveryAPI.getAvailableTools(req, res))
-app.get('/api/discovery/tools/:serverId', (req, res) => discoveryAPI.getToolsByServer(req, res))
-app.post('/api/discovery/tools/:serverId/:toolName/test', (req, res) => discoveryAPI.testTool(req, res))
-app.get('/api/discovery/status', (req, res) => discoveryAPI.getDiscoveryStatus(req, res))
-
-app.post('/api/chat', (req, res) => chatAPI.chat(req, res))
-
-// Error handler
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Unhandled error:', err)
-  res.status(500).json({
-    error: 'Internal server error',
-    message: err.message
+  // Request logging
+  app.use((req, res, next) => {
+    console.log(`${req.method} ${req.path}`)
+    next()
   })
-})
 
-// Async startup function
-async function startServer() {
+  // Serve static frontend files in Electron mode
+  if (options?.frontendURL) {
+    const frontendPath = path.resolve(__dirname, '../../electron/dist/renderer')
+    app.use(express.static(frontendPath))
+
+    // Serve index.html for SPA routing
+    app.get('/', (req, res) => {
+      res.sendFile(path.join(frontendPath, 'index.html'))
+    })
+  }
+
+  // API Routes
+  app.get('/api/health', (req, res, next) => healthAPI.check(req, res, next))
+
+  app.get('/api/config', (req, res, next) => configAPI.getConfig(req, res, next))
+  app.put('/api/config/llm', (req, res, next) => configAPI.updateLLMConfig(req, res, next))
+
+  app.get('/api/config/mcp', (req, res, next) => configAPI.getMCPServers(req, res, next))
+  app.post('/api/config/mcp', (req, res, next) => configAPI.addMCPServer(req, res, next))
+  app.delete('/api/config/mcp/:id', (req, res, next) => configAPI.deleteMCPServer(req, res, next))
+  app.patch('/api/config/mcp/:id/toggle', (req, res, next) => configAPI.toggleMCPServer(req, res, next))
+
+  app.get('/api/mcp/tools', (req, res, next) => mcpAPI.getTools(req, res, next))
+  app.get('/api/mcp/status', (req, res, next) => mcpAPI.getStatus(req, res, next))
+  app.post('/api/mcp/servers/:id/reconnect', (req, res, next) => mcpAPI.reconnectServer(req, res, next))
+
+  app.get('/api/discovery/catalog', (req, res, next) => discoveryAPI.getCatalog(req, res, next))
+  app.get('/api/discovery/catalog/:id', (req, res, next) => discoveryAPI.getServerTemplate(req, res, next))
+  app.get('/api/discovery/catalog/category/:category', (req, res, next) => discoveryAPI.getServersByCategory(req, res, next))
+  app.get('/api/discovery/catalog/search', (req, res, next) => discoveryAPI.searchCatalog(req, res, next))
+  app.get('/api/discovery/tools', (req, res, next) => discoveryAPI.getAvailableTools(req, res, next))
+  app.get('/api/discovery/tools/:serverId', (req, res, next) => discoveryAPI.getToolsByServer(req, res, next))
+  app.post('/api/discovery/tools/:serverId/:toolName/test', (req, res, next) => discoveryAPI.testTool(req, res, next))
+  app.get('/api/discovery/status', (req, res, next) => discoveryAPI.getDiscoveryStatus(req, res, next))
+
+  app.post('/api/chat', (req, res, next) => chatAPI.chat(req, res, next))
+
+  // Error handler
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error('Unhandled error:', err)
+    res.status(500).json({
+      error: 'Internal server error',
+      message: err.message
+    })
+  })
+
   try {
     // Connect to enabled MCP servers
     await mcpService.initialize()
   } catch (error) {
     console.error('Error initializing MCP service:', error)
-    // Don't exit - continue without MCP servers
+    // Don't throw - continue without MCP servers
   }
 
   // Start HTTP server
   const server = app.listen(PORT, () => {
     console.log(`🚀 MCP Chatbot server running on http://localhost:${PORT}`)
     console.log(`📊 Health check: http://localhost:${PORT}/api/health`)
+    console.log(`💾 Database: ${DATABASE_PATH}`)
 
     if (llmConfig) {
       console.log(`🤖 LLM configured: ${llmConfig.baseURL} (${llmConfig.model})`)
     } else {
-      console.log('⚠️  LLM not configured. Please configure via /api/config/llm')
+      console.log('⚠️  LLM not configured. Please configure via Settings')
     }
   })
 
-  // Graceful shutdown
-  const shutdown = async (signal: string) => {
-    console.log(`${signal} received, shutting down gracefully`)
+  // Graceful shutdown handler (only for web mode)
+  if (!options) {
+    const shutdown = async (signal: string) => {
+      console.log(`${signal} received, shutting down gracefully`)
 
-    server.close(async () => {
-      console.log('Server closed')
+      server.close(async () => {
+        console.log('Server closed')
 
-      // Shutdown MCP connections
-      await mcpService.shutdown()
+        // Shutdown MCP connections
+        await mcpService.shutdown()
 
-      // Close database
-      db.close()
+        // Close database
+        db.close()
 
-      process.exit(0)
-    })
+        process.exit(0)
+      })
+    }
+
+    process.on('SIGTERM', () => shutdown('SIGTERM'))
+    process.on('SIGINT', () => shutdown('SIGINT'))
   }
-
-  process.on('SIGTERM', () => shutdown('SIGTERM'))
-  process.on('SIGINT', () => shutdown('SIGINT'))
 
   return server
 }
 
-// Start the server
-const server = await startServer()
-
-export { app, server }
+// Web mode: Start server immediately (no options provided)
+// Electron mode: Export function to be called with options
+if (!process.env.ELECTRON_MODE) {
+  startServer().catch((error) => {
+    console.error('Failed to start server:', error)
+    process.exit(1)
+  })
+}

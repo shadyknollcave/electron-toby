@@ -21,7 +21,7 @@ IMPORTANT INSTRUCTIONS:
 5. When discussing MCP concepts, be practical and example-driven - show working code and actual tool calls rather than abstract explanations.`
 
 export function useChat() {
-  const { data: config } = useConfig()
+  const { config } = useConfig()
   const [messages, setMessages] = useState<Message[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)

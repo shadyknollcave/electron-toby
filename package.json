@@ -6,13 +6,20 @@
   "workspaces": [
     "backend",
     "frontend",
-    "shared"
+    "shared",
+    "electron"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev": "npm run dev --workspace=electron",
+    "dev:web": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "npm run dev --workspace=backend",
     "dev:frontend": "npm run dev --workspace=frontend",
     "build": "npm run build --workspaces",
+    "build:electron": "npm run build --workspace=electron",
+    "package": "npm run package --workspace=electron",
+    "package:linux": "npm run package:linux --workspace=electron",
+    "package:mac": "npm run package:mac --workspace=electron",
+    "package:win": "npm run package:win --workspace=electron",
     "test": "npm run test --workspaces",
     "test:integration": "npm run test:integration --workspace=backend"
   },

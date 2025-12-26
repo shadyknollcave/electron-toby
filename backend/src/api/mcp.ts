@@ -1,4 +1,4 @@
-import { Request, Response } from 'express'
+import { Request, Response, NextFunction } from 'express'
 import { MCPService } from '../services/mcp/MCPService.js'
 import { asyncHandler } from './utils.js'
 
@@ -15,7 +15,7 @@ export class MCPAPI {
    * GET /api/mcp/tools
    * List all available tools from all connected MCP servers
    */
-  getTools = asyncHandler(async (req: Request, res: Response) => {
+  getTools = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const tools = this.mcpService.getAllTools()
 
     res.json({
@@ -28,7 +28,7 @@ export class MCPAPI {
    * GET /api/mcp/status
    * Get connection status for all MCP servers
    */
-  getStatus = asyncHandler(async (req: Request, res: Response) => {
+  getStatus = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const statuses = this.mcpService.getAllServerStatuses()
 
     const summary = {
@@ -48,7 +48,7 @@ export class MCPAPI {
    * POST /api/mcp/servers/:id/reconnect
    * Manually reconnect to a specific MCP server
    */
-  reconnectServer = asyncHandler(async (req: Request, res: Response) => {
+  reconnectServer = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params
 
     try {

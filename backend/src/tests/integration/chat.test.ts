@@ -108,7 +108,7 @@ describe('Chat Integration Tests', () => {
 
       const req = {
         body: {
-          messages: [{ role: 'user', content: 'Hello' }]
+          messages: [{ role: 'user', content: 'Hello', timestamp: Date.now() }]
         }
       } as Request
 
@@ -124,7 +124,7 @@ describe('Chat Integration Tests', () => {
 
       await new Promise<void>((resolve) => {
         res.on('end', resolve)
-        chatAPI.chat(req, res)
+        chatAPI.chat(req, res, (() => {}) as any)
       })
 
       expect((res as any).getHeader('content-type')).toBe('text/event-stream')
@@ -138,7 +138,7 @@ describe('Chat Integration Tests', () => {
 
       const req = {
         body: {
-          messages: [{ role: 'user', content: 'Hello' }]
+          messages: [{ role: 'user', content: 'Hello', timestamp: Date.now() }]
         }
       } as Request
 
@@ -146,11 +146,11 @@ describe('Chat Integration Tests', () => {
 
       await new Promise<void>((resolve) => {
         res.on('end', resolve)
-        unconfiguredAPI.chat(req, res)
+        unconfiguredAPI.chat(req, res, (() => {}) as any)
       })
 
       expect(res.statusCode).toBe(503)
-      const data = JSON.parse(res.getData())
+      const data = JSON.parse((res as any).getData())
       expect(data.error).toContain('not configured')
     })
 
@@ -165,11 +165,11 @@ describe('Chat Integration Tests', () => {
 
       await new Promise<void>((resolve) => {
         res.on('end', resolve)
-        chatAPI.chat(req, res)
+        chatAPI.chat(req, res, (() => {}) as any)
       })
 
       expect(res.statusCode).toBe(400)
-      const data = JSON.parse(res.getData())
+      const data = JSON.parse((res as any).getData())
       expect(data.error).toBe('Invalid request')
     })
 
@@ -183,7 +183,7 @@ describe('Chat Integration Tests', () => {
 
       const req = {
         body: {
-          messages: [{ role: 'user', content: 'Hello' }]
+          messages: [{ role: 'user', content: 'Hello', timestamp: Date.now() }]
         }
       } as Request
 
@@ -206,7 +206,7 @@ describe('Chat Integration Tests', () => {
 
       await new Promise<void>((resolve) => {
         res.on('end', resolve)
-        badAPI.chat(req, res)
+        badAPI.chat(req, res, (() => {}) as any)
       })
 
       expect(errorChunks.length).toBeGreaterThan(0)

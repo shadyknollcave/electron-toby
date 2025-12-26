@@ -6,10 +6,10 @@ import { Request, Response, NextFunction } from 'express'
  * @returns Express middleware function
  */
 export function asyncHandler(
-  fn: (req: Request, res: Response) => Promise<void>
+  fn: (req: Request, res: Response, next: NextFunction) => Promise<void>
 ) {
   return (req: Request, res: Response, next: NextFunction) => {
-    Promise.resolve(fn(req, res)).catch((error: Error) => {
+    Promise.resolve(fn(req, res, next)).catch((error: Error) => {
       console.error('API Error:', error)
       res.status(500).json({ error: error.message })
     })

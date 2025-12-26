@@ -1,4 +1,4 @@
-import { Request, Response } from 'express'
+import { Request, Response, NextFunction } from 'express'
 import { ConfigService } from '../services/config/ConfigService.js'
 import { LLMService } from '../services/llm/LLMService.js'
 import { MCPService } from '../services/mcp/MCPService.js'
@@ -47,7 +47,7 @@ export class ConfigAPI {
   ) {}
 
   // Get all config
-  getConfig = asyncHandler(async (req: Request, res: Response) => {
+  getConfig = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const llmConfig = this.configService.getLLMConfig()
     const mcpServers = this.configService.getAllMCPServers()
 
@@ -58,7 +58,7 @@ export class ConfigAPI {
   })
 
   // Update LLM config
-  async updateLLMConfig(req: Request, res: Response): Promise<void> {
+  async updateLLMConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const validation = LLMConfigSchema.safeParse(req.body)
       if (!validation.success) {
@@ -71,8 +71,16 @@ export class ConfigAPI {
 
       const config = validation.data
 
+      // Convert null to undefined for TypeScript compatibility
+      const normalizedConfig = {
+        ...config,
+        apiKey: config.apiKey || undefined,
+        maxTokens: config.maxTokens ?? undefined,
+        systemPrompt: config.systemPrompt || undefined
+      }
+
       // Test connection before saving
-      const testService = new LLMService(config)
+      const testService = new LLMService(normalizedConfig)
       const healthy = await testService.healthCheck()
 
       if (!healthy) {
@@ -83,10 +91,10 @@ export class ConfigAPI {
       }
 
       // Save config
-      this.configService.saveLLMConfig(config)
+      this.configService.saveLLMConfig(normalizedConfig)
 
       // Reconfigure the main LLM service
-      this.llmService.configure(config)
+      this.llmService.configure(normalizedConfig)
 
       res.json({
         success: true,
@@ -101,13 +109,13 @@ export class ConfigAPI {
   }
 
   // Get all MCP servers
-  getMCPServers = asyncHandler(async (req: Request, res: Response) => {
+  getMCPServers = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const servers = this.configService.getAllMCPServers()
     res.json({ servers })
   })
 
   // Add MCP server
-  addMCPServer = asyncHandler(async (req: Request, res: Response) => {
+  addMCPServer = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const validation = MCPServerSchema.safeParse(req.body)
     if (!validation.success) {
       res.status(400).json({
@@ -134,7 +142,7 @@ export class ConfigAPI {
   })
 
   // Delete MCP server
-  deleteMCPServer = asyncHandler(async (req: Request, res: Response) => {
+  deleteMCPServer = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params
 
     const server = this.configService.getMCPServer(id)
@@ -153,7 +161,7 @@ export class ConfigAPI {
   })
 
   // Toggle MCP server
-  toggleMCPServer = asyncHandler(async (req: Request, res: Response) => {
+  toggleMCPServer = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params
     const { enabled } = req.body
 

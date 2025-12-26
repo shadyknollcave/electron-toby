@@ -1,0 +1,8 @@
+Placeholder for icon.png
+To create proper icons, use a 1024x1024 PNG source image and run:
+  npx electron-icon-builder --input=icon-source.png --output=.
+
+Required files:
+- icon.png (512x512) for Linux
+- icon.icns for macOS
+- icon.ico for Windows

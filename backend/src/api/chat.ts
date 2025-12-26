@@ -1,4 +1,4 @@
-import { Request, Response } from 'express'
+import { Request, Response, NextFunction } from 'express'
 import { LLMService } from '../services/llm/LLMService.js'
 import { MCPService } from '../services/mcp/MCPService.js'
 import { ChatOrchestrator } from '../services/chat/ChatOrchestrator.js'
@@ -11,7 +11,8 @@ const ChatRequestSchema = z.object({
       role: z.enum(['user', 'assistant', 'system', 'tool']),
       content: z.string(),
       tool_calls: z.any().optional(),
-      tool_call_id: z.string().optional()
+      tool_call_id: z.string().optional(),
+      timestamp: z.number().optional()
     })
   )
 })
@@ -26,7 +27,7 @@ export class ChatAPI {
     this.chatOrchestrator = new ChatOrchestrator(llmService, mcpService)
   }
 
-  async chat(req: Request, res: Response): Promise<void> {
+  async chat(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       // Validate request
       const validation = ChatRequestSchema.safeParse(req.body)
@@ -39,6 +40,12 @@ export class ChatAPI {
       }
 
       const { messages } = validation.data
+
+      // Add timestamps to messages if missing (required by Message interface)
+      const messagesWithTimestamps: Message[] = messages.map(msg => ({
+        ...msg,
+        timestamp: msg.timestamp || Date.now()
+      }))
 
       // Check if LLM is configured
       if (!this.llmService.isConfigured()) {
@@ -58,7 +65,7 @@ export class ChatAPI {
 
       // Stream response with tool execution
       try {
-        for await (const chunk of this.chatOrchestrator.chatWithTools(messages, mcpTools)) {
+        for await (const chunk of this.chatOrchestrator.chatWithTools(messagesWithTimestamps, mcpTools)) {
           res.write(`data: ${JSON.stringify(chunk)}\n\n`)
         }
         res.write('data: [DONE]\n\n')

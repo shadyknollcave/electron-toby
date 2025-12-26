@@ -1,4 +1,4 @@
-import { Request, Response } from 'express'
+import { Request, Response, NextFunction } from 'express'
 import { MCPService } from '../services/mcp/MCPService.js'
 import {
   MCP_SERVER_CATALOG,
@@ -21,7 +21,7 @@ export class DiscoveryAPI {
    * GET /api/discovery/catalog
    * Get the full MCP server catalog
    */
-  getCatalog = asyncHandler(async (_req: Request, res: Response) => {
+  getCatalog = asyncHandler(async (_req: Request, res: Response, next: NextFunction) => {
     res.json({
       servers: MCP_SERVER_CATALOG,
       count: MCP_SERVER_CATALOG.length
@@ -32,7 +32,7 @@ export class DiscoveryAPI {
    * GET /api/discovery/catalog/:id
    * Get a specific server template by ID
    */
-  getServerTemplate = asyncHandler(async (req: Request, res: Response) => {
+  getServerTemplate = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params
     const template = getServerTemplate(id)
 
@@ -48,7 +48,7 @@ export class DiscoveryAPI {
    * GET /api/discovery/catalog/category/:category
    * Get servers by category
    */
-  getServersByCategory = asyncHandler(async (req: Request, res: Response) => {
+  getServersByCategory = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const { category } = req.params as { category: any }
     const servers = getServersByCategory(category)
 
@@ -63,7 +63,7 @@ export class DiscoveryAPI {
    * GET /api/discovery/catalog/search?q=keyword
    * Search servers by keyword
    */
-  searchCatalog = asyncHandler(async (req: Request, res: Response) => {
+  searchCatalog = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const keyword = req.query.q as string
 
     if (!keyword) {
@@ -84,7 +84,7 @@ export class DiscoveryAPI {
    * GET /api/discovery/tools
    * Get all available tools from connected MCP servers
    */
-  getAvailableTools = asyncHandler(async (_req: Request, res: Response) => {
+  getAvailableTools = asyncHandler(async (_req: Request, res: Response, next: NextFunction) => {
     const tools = this.mcpService.getAllTools()
 
     // Group tools by server
@@ -113,7 +113,7 @@ export class DiscoveryAPI {
    * GET /api/discovery/tools/:serverId
    * Get tools from a specific connected server
    */
-  getToolsByServer = asyncHandler(async (req: Request, res: Response) => {
+  getToolsByServer = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const { serverId } = req.params
     const tools = this.mcpService.getToolsByServer(serverId)
 
@@ -128,7 +128,7 @@ export class DiscoveryAPI {
    * POST /api/discovery/tools/:serverId/:toolName/test
    * Test a tool with sample arguments
    */
-  testTool = asyncHandler(async (req: Request, res: Response) => {
+  testTool = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const { serverId, toolName } = req.params
     const { arguments: args } = req.body
 
@@ -161,7 +161,7 @@ export class DiscoveryAPI {
    * GET /api/discovery/status
    * Get discovery system status and statistics
    */
-  getDiscoveryStatus = asyncHandler(async (_req: Request, res: Response) => {
+  getDiscoveryStatus = asyncHandler(async (_req: Request, res: Response, next: NextFunction) => {
     const allTools = this.mcpService.getAllTools()
     const connectedServers = new Set(allTools.map(t => t.serverId))
 

@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  // Use relative paths for Electron file:// protocol
+  base: './',
   server: {
     port: 5173,
     proxy: {
@@ -13,6 +15,10 @@ export default defineConfig({
     }
   },
   build: {
+    // Output to electron/dist/renderer for Electron builds
+    outDir: process.env.ELECTRON_BUILD === 'true'
+      ? '../electron/dist/renderer'
+      : 'dist',
     rollupOptions: {
       output: {
         manualChunks: undefined

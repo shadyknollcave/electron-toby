@@ -88,7 +88,8 @@ export class LLMService {
       const message: Message = {
         role: 'assistant',
         content: choice.message.content || '',
-        tool_calls: choice.message.tool_calls as any
+        tool_calls: choice.message.tool_calls as any,
+        timestamp: Date.now()
       }
 
       return {

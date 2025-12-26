@@ -84,6 +84,47 @@ docker-compose up --build
 
 **That's it!** See [PODMAN.md](PODMAN.md) for more details.
 
+### Option C: Desktop Application (Electron) - NEW!
+
+The application is now also available as a native desktop app for Linux, Windows, and macOS.
+
+**For End Users:**
+```bash
+# Download and install for your platform:
+# - Linux: TobyAI-1.0.0.AppImage or .deb
+# - Windows: TobyAI Setup 1.0.0.exe
+# - macOS: TobyAI-1.0.0.dmg
+
+# Run the installed application
+# All configuration stored in OS-specific app data folder
+```
+
+**For Developers:**
+```bash
+# Build and run Electron app (requires native Linux/macOS/Windows, not WSL)
+npm run dev
+
+# Package for distribution
+npm run package           # Current platform
+npm run package:linux     # AppImage, deb
+npm run package:mac       # DMG, zip
+npm run package:win       # NSIS, portable exe
+```
+
+**See [ELECTRON.md](./ELECTRON.md) for complete desktop app documentation.**
+
+## Deployment Comparison
+
+| Feature | Web App | Desktop App |
+|---------|---------|-------------|
+| **Installation** | Docker/Podman | Native installer |
+| **Backend** | Separate container | Embedded in app |
+| **Frontend** | Separate container | Bundled in app |
+| **Database** | `./data/config.db` | `userData/config.db` |
+| **Port** | Fixed (3000, 5173) | Auto-detect |
+| **Updates** | `docker-compose pull` | Manual download |
+| **Best For** | Self-hosting, development, WSL | End users, offline usage |
+
 ## Recent Improvements
 
 ### December 2024
