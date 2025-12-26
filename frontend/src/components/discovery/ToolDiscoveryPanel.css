@@ -543,3 +543,79 @@
   max-height: 300px;
   overflow-y: auto;
 }
+
+/* Configuration Form */
+.config-form {
+  margin: 1.5rem 0;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.form-group input[type="text"],
+.form-group input[type="url"] {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(0, 217, 255, 0.1);
+}
+
+.checkbox-label {
+  display: flex !important;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  font-weight: normal !important;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  cursor: pointer;
+}
+
+.checkbox-label span {
+  color: var(--text-primary);
+}
+
+.form-group .hint ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+}
+
+.form-group .hint li {
+  margin-bottom: 0.5rem;
+}
+
+.primary-button {
+  background: var(--primary-color) !important;
+  color: #0A0E27 !important;
+  font-weight: 600 !important;
+}
+
+.primary-button:hover:not(:disabled) {
+  background: var(--primary-hover) !important;
+}
+
+.primary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

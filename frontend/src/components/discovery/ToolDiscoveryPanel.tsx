@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../../services/api'
 import './ToolDiscoveryPanel.css'
 
@@ -19,6 +19,18 @@ interface MCPServerTemplate {
     defaultUrl: string
     requiresAuth?: boolean
   }
+  configurationHints?: {
+    envVars?: Array<{
+      name: string
+      description: string
+      required: boolean
+    }>
+    pathParameters?: Array<{
+      name: string
+      description: string
+      example: string
+    }>
+  }
   exampleTools?: Array<{
     name: string
     description: string
@@ -34,12 +46,22 @@ interface Tool {
 }
 
 export function ToolDiscoveryPanel() {
+  const queryClient = useQueryClient()
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedServer, setSelectedServer] = useState<MCPServerTemplate | null>(null)
   const [testingTool, setTestingTool] = useState<Tool | null>(null)
   const [testArgs, setTestArgs] = useState<string>('{}')
   const [activeTab, setActiveTab] = useState<'catalog' | 'connected'>('catalog')
+  const [configuringServer, setConfiguringServer] = useState<MCPServerTemplate | null>(null)
+  const [serverConfig, setServerConfig] = useState<any>({
+    name: '',
+    enabled: true,
+    command: '',
+    args: [],
+    url: '',
+    env: {}
+  })
 
   // Fetch server catalog
   const { data: catalog } = useQuery({
@@ -72,6 +94,32 @@ export function ToolDiscoveryPanel() {
     }
   })
 
+  // Add MCP server mutation
+  const addServerMutation = useMutation({
+    mutationFn: async (config: any) => {
+      const response = await fetch('/api/config/mcp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to add server')
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['config'] })
+      queryClient.invalidateQueries({ queryKey: ['discovery', 'tools'] })
+      setConfiguringServer(null)
+      setSelectedServer(null)
+      alert('MCP server added successfully!')
+    },
+    onError: (error: Error) => {
+      alert(`Failed to add server: ${error.message}`)
+    }
+  })
+
   const categories = ['all', 'filesystem', 'database', 'api', 'productivity', 'development', 'custom']
 
   const filteredServers = catalog?.servers?.filter((server: MCPServerTemplate) => {
@@ -94,6 +142,66 @@ export function ToolDiscoveryPanel() {
       })
     } catch (error) {
       alert('Invalid JSON in test arguments')
+    }
+  }
+
+  const handleConfigureServer = (template: MCPServerTemplate) => {
+    setConfiguringServer(template)
+
+    // Pre-fill form based on template
+    if (template.type === 'stdio' && template.stdio) {
+      setServerConfig({
+        name: template.name,
+        enabled: true,
+        type: 'stdio',
+        command: template.stdio.command,
+        args: template.stdio.args.join(' '), // Convert array to string for editing
+        env: {}
+      })
+    } else if (template.type === 'http' && template.http) {
+      setServerConfig({
+        name: template.name,
+        enabled: true,
+        type: 'http',
+        url: template.http.defaultUrl,
+        headers: {}
+      })
+    }
+  }
+
+  const handleAddServer = async () => {
+    if (!configuringServer) return
+
+    try {
+      // Build the server config
+      const config: any = {
+        name: serverConfig.name || configuringServer.name,
+        enabled: serverConfig.enabled,
+        type: configuringServer.type
+      }
+
+      if (configuringServer.type === 'stdio') {
+        // Parse args string into array
+        const argsArray = serverConfig.args
+          .split(' ')
+          .filter((arg: string) => arg.trim())
+          .map((arg: string) => arg.trim())
+
+        config.config = {
+          command: serverConfig.command,
+          args: argsArray,
+          env: serverConfig.env || {}
+        }
+      } else if (configuringServer.type === 'http') {
+        config.config = {
+          url: serverConfig.url,
+          headers: serverConfig.headers || {}
+        }
+      }
+
+      await addServerMutation.mutateAsync(config)
+    } catch (error) {
+      console.error('Error adding server:', error)
     }
   }
 
@@ -237,6 +345,15 @@ export function ToolDiscoveryPanel() {
                   }}>
                     📋 Copy Configuration
                   </button>
+                  <button
+                    className="primary-button"
+                    onClick={() => {
+                      handleConfigureServer(selectedServer)
+                      setSelectedServer(null)
+                    }}
+                  >
+                    ➕ Configure & Add Server
+                  </button>
                 </div>
               </div>
             </div>
@@ -330,6 +447,121 @@ export function ToolDiscoveryPanel() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {configuringServer && (
+        <div className="server-detail-modal" onClick={() => setConfiguringServer(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="close-button" onClick={() => setConfiguringServer(null)}>×</button>
+
+            <h2>➕ Configure {configuringServer.name}</h2>
+            <p>{configuringServer.description}</p>
+
+            <div className="config-form">
+              <div className="form-group">
+                <label>Server Name</label>
+                <input
+                  type="text"
+                  value={serverConfig.name}
+                  onChange={(e) => setServerConfig({ ...serverConfig, name: e.target.value })}
+                  placeholder="Enter server name"
+                />
+              </div>
+
+              {configuringServer.type === 'stdio' && configuringServer.stdio && (
+                <>
+                  <div className="form-group">
+                    <label>Command</label>
+                    <input
+                      type="text"
+                      value={serverConfig.command}
+                      onChange={(e) => setServerConfig({ ...serverConfig, command: e.target.value })}
+                      placeholder="e.g., npx, node, python"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Arguments</label>
+                    <input
+                      type="text"
+                      value={serverConfig.args}
+                      onChange={(e) => setServerConfig({ ...serverConfig, args: e.target.value })}
+                      placeholder="Space-separated arguments"
+                    />
+                    {configuringServer.configurationHints?.pathParameters && (
+                      <div className="hint">
+                        <strong>Customize paths:</strong>
+                        <ul>
+                          {configuringServer.configurationHints.pathParameters.map((param, idx) => (
+                            <li key={idx}>
+                              <strong>{param.name}:</strong> {param.description}
+                              {param.example && <code> (e.g., {param.example})</code>}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {configuringServer.type === 'http' && configuringServer.http && (
+                <>
+                  <div className="form-group">
+                    <label>URL</label>
+                    <input
+                      type="text"
+                      value={serverConfig.url}
+                      onChange={(e) => setServerConfig({ ...serverConfig, url: e.target.value })}
+                      placeholder="http://localhost:8080/mcp"
+                    />
+                  </div>
+                </>
+              )}
+
+              {configuringServer.configurationHints?.envVars && (
+                <div className="form-group">
+                  <label>Environment Variables (Optional)</label>
+                  <div className="hint">
+                    <strong>This server may require:</strong>
+                    <ul>
+                      {configuringServer.configurationHints.envVars.map((envVar, idx) => (
+                        <li key={idx}>
+                          <strong>{envVar.name}</strong>{envVar.required && ' (required)'}: {envVar.description}
+                        </li>
+                      ))}
+                    </ul>
+                    <p>Set these in your system environment or container config.</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="form-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={serverConfig.enabled}
+                    onChange={(e) => setServerConfig({ ...serverConfig, enabled: e.target.checked })}
+                  />
+                  <span>Enable server immediately after adding</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button onClick={() => setConfiguringServer(null)}>
+                Cancel
+              </button>
+              <button
+                className="primary-button"
+                onClick={handleAddServer}
+                disabled={addServerMutation.isPending}
+              >
+                {addServerMutation.isPending ? 'Adding...' : '➕ Add Server'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
