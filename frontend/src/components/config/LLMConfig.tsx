@@ -10,7 +10,11 @@ export function LLMConfig() {
     apiKey: '',
     model: 'llama2',
     temperature: 0.7,
-    maxTokens: undefined
+    maxTokens: undefined,
+    topP: 1.0,
+    presencePenalty: 0.0,
+    frequencyPenalty: 0.0,
+    systemPrompt: ''
   })
 
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
@@ -23,7 +27,11 @@ export function LLMConfig() {
         apiKey: config.llm.apiKey || '',
         model: config.llm.model,
         temperature: config.llm.temperature ?? 0.7,
-        maxTokens: config.llm.maxTokens
+        maxTokens: config.llm.maxTokens,
+        topP: config.llm.topP ?? 1.0,
+        presencePenalty: config.llm.presencePenalty ?? 0.0,
+        frequencyPenalty: config.llm.frequencyPenalty ?? 0.0,
+        systemPrompt: config.llm.systemPrompt || ''
       })
     }
   }, [config])
@@ -97,7 +105,9 @@ export function LLMConfig() {
         </div>
 
         <div className="form-group">
-          <label htmlFor="temperature">Temperature</label>
+          <label htmlFor="temperature" title="Controls randomness: 0 = focused and deterministic, 1 = balanced, 2 = very creative and random">
+            Temperature
+          </label>
           <input
             id="temperature"
             type="number"
@@ -106,11 +116,15 @@ export function LLMConfig() {
             step="0.1"
             value={formData.temperature}
             onChange={(e) => setFormData({ ...formData, temperature: parseFloat(e.target.value) })}
+            title="Controls randomness: 0 = focused and deterministic, 1 = balanced, 2 = very creative and random"
           />
+          <small>Controls creativity (0-2). Lower = focused, higher = creative</small>
         </div>
 
         <div className="form-group">
-          <label htmlFor="maxTokens">Max Tokens (optional)</label>
+          <label htmlFor="maxTokens" title="Maximum length of the response. Each token is roughly 4 characters or 0.75 words">
+            Max Tokens (optional)
+          </label>
           <input
             id="maxTokens"
             type="number"
@@ -121,7 +135,76 @@ export function LLMConfig() {
               maxTokens: e.target.value ? parseInt(e.target.value) : undefined
             })}
             placeholder="Leave empty for default"
+            title="Maximum length of the response. Each token is roughly 4 characters or 0.75 words"
           />
+          <small>Limits response length (leave empty for unlimited)</small>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="topP" title="Alternative to temperature. Considers only the most probable words that add up to this probability. 1.0 = consider all words, 0.1 = only consider top 10%">
+            Top P
+          </label>
+          <input
+            id="topP"
+            type="number"
+            min="0"
+            max="1"
+            step="0.05"
+            value={formData.topP}
+            onChange={(e) => setFormData({ ...formData, topP: parseFloat(e.target.value) })}
+            title="Alternative to temperature. Considers only the most probable words that add up to this probability. 1.0 = consider all words, 0.1 = only consider top 10%"
+          />
+          <small>Limits word choices (0-1). Lower = more focused. Default: 1.0</small>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="presencePenalty" title="Encourages talking about new topics. Positive values = more diverse topics, negative values = stay on current topic">
+            Presence Penalty
+          </label>
+          <input
+            id="presencePenalty"
+            type="number"
+            min="-2"
+            max="2"
+            step="0.1"
+            value={formData.presencePenalty}
+            onChange={(e) => setFormData({ ...formData, presencePenalty: parseFloat(e.target.value) })}
+            title="Encourages talking about new topics. Positive values = more diverse topics, negative values = stay on current topic"
+          />
+          <small>Encourages new topics (-2 to 2). Positive = more variety. Default: 0</small>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="frequencyPenalty" title="Reduces repetitive words and phrases. Positive values = less repetition, negative values = allows more repetition">
+            Frequency Penalty
+          </label>
+          <input
+            id="frequencyPenalty"
+            type="number"
+            min="-2"
+            max="2"
+            step="0.1"
+            value={formData.frequencyPenalty}
+            onChange={(e) => setFormData({ ...formData, frequencyPenalty: parseFloat(e.target.value) })}
+            title="Reduces repetitive words and phrases. Positive values = less repetition, negative values = allows more repetition"
+          />
+          <small>Reduces repetition (-2 to 2). Positive = less repeat. Default: 0</small>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="systemPrompt" title="Instructions that define how the AI should behave. This replaces the default MCP assistant behavior">
+            Custom System Prompt (optional)
+          </label>
+          <textarea
+            id="systemPrompt"
+            rows={8}
+            value={formData.systemPrompt}
+            onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
+            placeholder="You are an MCP development assistant..."
+            style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}
+            title="Instructions that define how the AI should behave. This replaces the default MCP assistant behavior"
+          />
+          <small>Override default MCP assistant prompt (leave empty for default)</small>
         </div>
 
         <div style={{ display: 'flex', gap: '1rem' }}>
@@ -138,7 +221,11 @@ export function LLMConfig() {
                   apiKey: '',
                   model: 'llama2',
                   temperature: 0.7,
-                  maxTokens: undefined
+                  maxTokens: undefined,
+                  topP: 1.0,
+                  presencePenalty: 0.0,
+                  frequencyPenalty: 0.0,
+                  systemPrompt: ''
                 })
                 setMessage(null)
               }}
