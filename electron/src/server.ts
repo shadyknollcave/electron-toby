@@ -3,11 +3,16 @@ import path from 'path'
 import fs from 'fs'
 import crypto from 'crypto'
 import { config as dotenvConfig } from 'dotenv'
+import { fileURLToPath } from 'url'
+import { createServer as createNetServer } from 'net'
 import type { Server } from 'http'
 
 // Import backend server module (type declaration in backend.d.ts)
 // @ts-ignore - Importing compiled JS from backend
-import { startServer } from '../../backend/dist/server.js'
+import { startServer } from '../../backend/dist/backend/src/server.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 let serverInstance: Server | null = null
 
@@ -56,8 +61,7 @@ function getOrGenerateSecret(): string {
  */
 async function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
-    const net = require('net')
-    const tester = net.createServer()
+    const tester = createNetServer()
       .once('error', () => resolve(false))
       .once('listening', () => {
         tester.close()

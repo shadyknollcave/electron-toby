@@ -2,8 +2,13 @@ import express from 'express'
 import cors from 'cors'
 import { config as dotenvConfig } from 'dotenv'
 import path from 'path'
+import { fileURLToPath } from 'url'
+import { existsSync } from 'fs'
 import type { Server } from 'http'
 import { initializeDatabase } from './db/schema.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 import { Repository } from './db/repository.js'
 import { EncryptionService } from './services/config/EncryptionService.js'
 import { ConfigService } from './services/config/ConfigService.js'
@@ -78,6 +83,12 @@ export async function startServer(options?: ServerOptions): Promise<Server> {
   // Create Express app
   const app = express()
 
+  // Request logging
+  app.use((req, res, next) => {
+    console.log(`${req.method} ${req.path}`)
+    next()
+  })
+
   // Middleware
   app.use(cors({
     origin: FRONTEND_URL.split(','),
@@ -85,21 +96,30 @@ export async function startServer(options?: ServerOptions): Promise<Server> {
   }))
   app.use(express.json())
 
-  // Request logging
-  app.use((req, res, next) => {
-    console.log(`${req.method} ${req.path}`)
-    next()
-  })
+  // Serve static frontend files in Electron mode (detected by custom databasePath)
+  const isElectronMode = options?.databasePath !== undefined
+  let frontendPath = ''
 
-  // Serve static frontend files in Electron mode
-  if (options?.frontendURL) {
-    const frontendPath = path.resolve(__dirname, '../../electron/dist/renderer')
-    app.use(express.static(frontendPath))
+  if (isElectronMode) {
+    // Use path.join for better Windows compatibility
+    frontendPath = path.join(__dirname, '..', '..', '..', '..', 'electron', 'dist', 'renderer')
+    frontendPath = path.normalize(frontendPath)
 
-    // Serve index.html for SPA routing
+    console.log('🖥️  Electron mode: Serving static frontend from:', frontendPath)
+
+    // Explicit root route handler
     app.get('/', (req, res) => {
-      res.sendFile(path.join(frontendPath, 'index.html'))
+      const indexPath = path.join(frontendPath, 'index.html')
+      res.sendFile(indexPath, (err) => {
+        if (err) {
+          console.error('Error sending index.html:', err)
+          res.status(500).send('Error loading application')
+        }
+      })
     })
+
+    // Serve static files (assets, JS, CSS, etc.)
+    app.use(express.static(frontendPath, { index: false }))
   }
 
   // API Routes
@@ -128,6 +148,19 @@ export async function startServer(options?: ServerOptions): Promise<Server> {
 
   app.post('/api/chat', (req, res, next) => chatAPI.chat(req, res, next))
 
+  // Catch-all route for Electron mode - serve index.html for client-side routing
+  if (isElectronMode && frontendPath) {
+    app.get('*', (req, res) => {
+      const indexPath = path.join(frontendPath, 'index.html')
+      res.sendFile(indexPath, (err) => {
+        if (err) {
+          console.error('Error serving index.html:', err)
+          res.status(500).send('Error loading application')
+        }
+      })
+    })
+  }
+
   // Error handler
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     console.error('Unhandled error:', err)
@@ -145,17 +178,27 @@ export async function startServer(options?: ServerOptions): Promise<Server> {
     // Don't throw - continue without MCP servers
   }
 
-  // Start HTTP server
-  const server = app.listen(PORT, () => {
-    console.log(`🚀 MCP Chatbot server running on http://localhost:${PORT}`)
-    console.log(`📊 Health check: http://localhost:${PORT}/api/health`)
-    console.log(`💾 Database: ${DATABASE_PATH}`)
+  // Start HTTP server and wait for it to be ready
+  const server = await new Promise<Server>((resolve, reject) => {
+    const httpServer = app.listen(PORT, () => {
+      console.log(`🚀 MCP Chatbot server running on http://localhost:${PORT}`)
+      console.log(`📊 Health check: http://localhost:${PORT}/api/health`)
+      console.log(`💾 Database: ${DATABASE_PATH}`)
 
-    if (llmConfig) {
-      console.log(`🤖 LLM configured: ${llmConfig.baseURL} (${llmConfig.model})`)
-    } else {
-      console.log('⚠️  LLM not configured. Please configure via Settings')
-    }
+      if (llmConfig) {
+        console.log(`🤖 LLM configured: ${llmConfig.baseURL} (${llmConfig.model})`)
+      } else {
+        console.log('⚠️  LLM not configured. Please configure via Settings')
+      }
+
+      // Server is now listening - resolve the promise
+      resolve(httpServer)
+    })
+
+    httpServer.on('error', (err) => {
+      console.error('Server failed to start:', err)
+      reject(err)
+    })
   })
 
   // Graceful shutdown handler (only for web mode)

@@ -5,10 +5,10 @@
   "main": "dist/main.js",
   "type": "module",
   "scripts": {
-    "dev": "npm run build:backend && npm run build:electron && NODE_ENV=development electron .",
+    "dev": "npm run build:backend && npm run build:electron && cross-env NODE_ENV=development ELECTRON_MODE=true electron .",
     "build": "npm run build:backend && npm run build:frontend:electron && npm run build:electron",
     "build:backend": "cd ../backend && npm run build",
-    "build:frontend:electron": "cd ../frontend && ELECTRON_BUILD=true npm run build",
+    "build:frontend:electron": "cd ../frontend && cross-env ELECTRON_BUILD=true npm run build",
     "build:electron": "tsc -p tsconfig.json",
     "package": "npm run build && electron-builder build --publish never",
     "package:linux": "npm run package -- --linux",
@@ -19,12 +19,13 @@
     "electron": "^28.0.0"
   },
   "devDependencies": {
-    "electron-builder": "^24.9.1",
     "@electron/rebuild": "^3.6.0",
+    "@types/node": "^20.11.5",
     "concurrently": "^8.2.2",
+    "cross-env": "^10.1.0",
+    "electron-builder": "^24.9.1",
     "nodemon": "^3.0.2",
-    "typescript": "^5.3.3",
-    "@types/node": "^20.11.5"
+    "typescript": "^5.3.3"
   },
   "author": "TobyAI Team",
   "license": "MIT"

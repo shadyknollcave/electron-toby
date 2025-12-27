@@ -521,6 +521,39 @@ useEffect(() => {
 
 ## Recent Code Changes
 
+### Race Condition Fix - Server Startup (December 2024)
+Fixed race condition in Electron mode where window loaded before server was ready:
+- **backend/src/server.ts**: Wrapped `app.listen()` in Promise that resolves when listening
+- **electron/src/main.ts**: Added health check polling before loading frontend URL
+- **Ensures**: Server is fully ready before Electron window attempts to load
+- **Impact**: Eliminated "Cannot GET /" error on Electron app startup
+
+**Changes:**
+```typescript
+// backend/src/server.ts
+const server = await new Promise<Server>((resolve, reject) => {
+  const httpServer = app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`)
+    resolve(httpServer) // Only resolve when actually listening
+  })
+  httpServer.on('error', (err) => reject(err))
+})
+
+// electron/src/main.ts
+async function waitForServer(port: number): Promise<boolean> {
+  // Poll /api/health endpoint until ready
+  for (let attempt = 1; attempt <= 10; attempt++) {
+    try {
+      const response = await fetch(`http://localhost:${port}/api/health`)
+      if (response.ok) return true
+    } catch {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+  }
+  return false
+}
+```
+
 ### Security Fix - EncryptionService (2024)
 Changed from hardcoded salt to derived salt using SHA-256:
 ```typescript

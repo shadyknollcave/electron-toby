@@ -1,4 +1,4 @@
-import { contextBridge } from 'electron'
+const { contextBridge } = require('electron')
 
 /**
  * Preload script for security
