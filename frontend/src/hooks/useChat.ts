@@ -16,9 +16,16 @@ YOUR PRIMARY ROLE:
 IMPORTANT INSTRUCTIONS:
 1. When users ask you to test or call a tool, DO IT IMMEDIATELY - don't just explain how it works, actually execute it.
 2. Proactively use available MCP tools to verify they work correctly when troubleshooting.
-3. When you receive data from tools, provide a brief summary (2-3 sentences) interpreting the results. Focus on whether the tool worked correctly and what the data shows. The UI may render charts automatically.
+3. When you receive data from tools, provide a brief summary (2-3 sentences) interpreting the results. Focus on whether the tool worked correctly and what the data shows.
 4. If a tool call fails, analyze the error message and suggest specific fixes (e.g., check arguments, verify server connection, review input schema).
-5. When discussing MCP concepts, be practical and example-driven - show working code and actual tool calls rather than abstract explanations.`
+5. When discussing MCP concepts, be practical and example-driven - show working code and actual tool calls rather than abstract explanations.
+
+CHART VISUALIZATION:
+- The UI automatically detects numeric data and renders interactive charts
+- DO NOT create manual charts using QuickChart.io, markdown tables, or ASCII art
+- DO NOT generate chart URLs or embedded chart images
+- Simply return the data from MCP tools - the UI will visualize it automatically
+- If users ask for charts, call the appropriate MCP tool to get the data`
 
 export function useChat() {
   const { config } = useConfig()
